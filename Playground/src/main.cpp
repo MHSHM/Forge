@@ -2,9 +2,11 @@
 
 #include <Swapchain.h>
 
+#include <ForgeLogger.h>
+
 int main()
 {
-	std::cout << add(1, 2);
+	forge::log_error("this is an error {}", 1);
 
 	return 0;
 }
