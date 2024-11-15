@@ -33,14 +33,12 @@ namespace forge
 	#endif
 
 		uint32_t extensions_count = 0u;
-		const char** extensions = nullptr;
-		const char* extensions_list[] = {
+		const char* extensions[] = {
 			VK_KHR_SURFACE_EXTENSION_NAME,
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 			VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 		};
-		extensions_count = sizeof(extensions_list) / sizeof(extensions_list[0]);
-		extensions = extensions_list;
+		extensions_count = sizeof(extensions) / sizeof(extensions[0]);
 
 		uint32_t supported_version = VK_API_VERSION_1_0;
 		vkEnumerateInstanceVersion(&supported_version);
@@ -210,12 +208,10 @@ namespace forge
 		VkResult res;
 
 		uint32_t extensions_count = 0;
-		const char** extensions = nullptr;
-		const char* extensions_list[] = {
+		const char* extensions[] = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		};
-		extensions_count = sizeof(extensions_list) / sizeof(extensions_list[0]);
-		extensions = extensions_list;
+		extensions_count = sizeof(extensions) / sizeof(extensions[0]);
 
 		for (uint32_t i = 0; i < extensions_count; ++i)
 		{
@@ -236,12 +232,21 @@ namespace forge
 		queue_info.queueCount = 1u;
 		queue_info.pQueuePriorities = queue_priorites;
 
+		VkPhysicalDeviceFeatures device_features {};
+
+		// Enable timeline semaphore feature
+		VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features {};
+		timeline_semaphore_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+		timeline_semaphore_features.timelineSemaphore = VK_TRUE;
+
 		VkDeviceCreateInfo device_info{};
 		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		device_info.queueCreateInfoCount = 1u;
 		device_info.pQueueCreateInfos = &queue_info;
 		device_info.enabledExtensionCount = extensions_count;
 		device_info.ppEnabledExtensionNames = extensions;
+		device_info.pEnabledFeatures = &device_features;
+		device_info.pNext = &timeline_semaphore_features;
 		res = vkCreateDevice(forge->physical_device, &device_info, nullptr, &forge->device);
 		VK_RES_CHECK(res);
 
