@@ -6,12 +6,6 @@
 namespace forge
 {
 	static bool
-	_forge_swapchain_description_validate(ForgeSwapchainDescription description)
-	{
-
-	}
-
-	static bool
 	_forge_swapchain_init(Forge* forge, ForgeSwapchain* swapchain)
 	{
 		VkResult res;
@@ -76,7 +70,7 @@ namespace forge
 		{
 			log_warning(
 				"Required presentation mode '{}' is not supported, falling back to '{}'",
-				_forge_swapchain_present_mode_to_str(VK_PRESENT_MODE_MAILBOX_KHR),
+				_forge_swapchain_present_mode_to_str(description.present_mode),
 				_forge_swapchain_present_mode_to_str(VK_PRESENT_MODE_FIFO_KHR)
 			);
 
@@ -110,7 +104,7 @@ namespace forge
 		swapchain_info.imageColorSpace = surface_format.colorSpace;
 		swapchain_info.imageExtent = description.extent;
 		swapchain_info.imageArrayLayers = 1u;
-		swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapchain_info.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 		swapchain_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -199,7 +193,7 @@ namespace forge
 			return false;
 		}
 
-		log_info("Swapchain was updated sucessfully, the new dimensions are {}x{}", width, height);
+		log_info("Swapchain was updated successfully, the new dimensions are {}x{}", width, height);
 
 		return true;
 	}
