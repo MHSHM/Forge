@@ -7,6 +7,7 @@
 
 #include "Forge.h"
 #include "ForgeLogger.h"
+#include "ForgeUtils.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -15,101 +16,8 @@
 
 namespace forge
 {
-	static const char* _forge_vulk_result_to_str(VkResult res)
-	{
-		switch (res)
-		{
-		case VK_SUCCESS:	return "VK_SUCCESS";
-		case VK_NOT_READY:	return "VK_NOT_READY";
-		case VK_TIMEOUT:	return "VK_TIMEOUT";
-		case VK_EVENT_SET:	return "VK_EVENT_SET";
-		case VK_EVENT_RESET:	return "VK_EVENT_RESET";
-		case VK_INCOMPLETE:	return "VK_INCOMPLETE";
-		case VK_ERROR_OUT_OF_HOST_MEMORY:	return "VK_ERROR_OUT_OF_HOST_MEMORY";
-		case VK_ERROR_OUT_OF_DEVICE_MEMORY:	return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-		case VK_ERROR_INITIALIZATION_FAILED:	return "VK_ERROR_INITIALIZATION_FAILED";
-		case VK_ERROR_DEVICE_LOST:	return "VK_ERROR_DEVICE_LOST";
-		case VK_ERROR_MEMORY_MAP_FAILED:	return "VK_ERROR_MEMORY_MAP_FAILED";
-		case VK_ERROR_LAYER_NOT_PRESENT:	return "VK_ERROR_LAYER_NOT_PRESENT";
-		case VK_ERROR_EXTENSION_NOT_PRESENT:	return "VK_ERROR_EXTENSION_NOT_PRESENT";
-		case VK_ERROR_FEATURE_NOT_PRESENT:	return "VK_ERROR_FEATURE_NOT_PRESENT";
-		case VK_ERROR_INCOMPATIBLE_DRIVER:	return "VK_ERROR_INCOMPATIBLE_DRIVER";
-		case VK_ERROR_TOO_MANY_OBJECTS:	return "VK_ERROR_TOO_MANY_OBJECTS";
-		case VK_ERROR_FORMAT_NOT_SUPPORTED:	return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-		case VK_ERROR_FRAGMENTED_POOL:	return "VK_ERROR_FRAGMENTED_POOL";
-		case VK_ERROR_UNKNOWN:	return "VK_ERROR_UNKNOWN";
-		case VK_ERROR_OUT_OF_POOL_MEMORY:	return "VK_ERROR_OUT_OF_POOL_MEMORY";
-		case VK_ERROR_INVALID_EXTERNAL_HANDLE:	return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
-		case VK_ERROR_FRAGMENTATION:	return "VK_ERROR_FRAGMENTATION";
-		case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:	return "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS";
-		case VK_PIPELINE_COMPILE_REQUIRED:	return "VK_PIPELINE_COMPILE_REQUIRED";
-		case VK_ERROR_SURFACE_LOST_KHR:	return "VK_ERROR_SURFACE_LOST_KHR";
-		case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:	return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-		case VK_SUBOPTIMAL_KHR:	return "VK_SUBOPTIMAL_KHR";
-		case VK_ERROR_OUT_OF_DATE_KHR:	return "VK_ERROR_OUT_OF_DATE_KHR";
-		case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:	return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-		case VK_ERROR_VALIDATION_FAILED_EXT:	return "VK_ERROR_VALIDATION_FAILED_EXT";
-		case VK_ERROR_INVALID_SHADER_NV:	return "VK_ERROR_INVALID_SHADER_NV";
-		case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:	return "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR";
-		case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:	return "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR";
-		case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:	return "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR";
-		case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:	return "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR";
-		case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:	return "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR";
-		case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:	return "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR";
-		case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:	return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-		case VK_ERROR_NOT_PERMITTED_KHR:	return "VK_ERROR_NOT_PERMITTED_KHR";
-		case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:	return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
-		case VK_THREAD_IDLE_KHR:	return "VK_THREAD_IDLE_KHR";
-		case VK_THREAD_DONE_KHR:	return "VK_THREAD_DONE_KHR";
-		case VK_OPERATION_DEFERRED_KHR:	return "VK_OPERATION_DEFERRED_KHR";
-		case VK_OPERATION_NOT_DEFERRED_KHR:	return "VK_OPERATION_NOT_DEFERRED_KHR";
-		case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:	return "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
-		case VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT:	return "VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT";
-		case VK_RESULT_MAX_ENUM:
-		default:
-			break;
-		}
-
-		log_warning("Provided error code '{}' is not handled here", res);
-		return "";
-	}
-
-	static const char* _forge_vulk_api_version_to_str(uint32_t api_version)
-	{
-		switch (api_version)
-		{
-		case VK_API_VERSION_1_0:	return "1.0";
-		case VK_API_VERSION_1_1:	return "1.1";
-		case VK_API_VERSION_1_2:	return "1.2";
-		case VK_API_VERSION_1_3:	return "1.3";
-		default:
-			break;
-		}
-
-		log_warning("Provided API version is not handled here\n");
-		return "";
-	}
-
-	static bool _forge_vulk_instance_extension_support(const char* extension)
-	{
-		uint32_t extensions_count = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensions_count, nullptr);
-
-		std::vector<VkExtensionProperties> extensions(extensions_count);
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensions_count, extensions.data());
-
-		for (auto& supported_extension : extensions)
-		{
-			if (strcmp(extension, supported_extension.extensionName) == 0)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	static bool _forge_vulk_instance_init(Forge* forge)
+	static bool
+	_forge_instance_init(Forge* forge)
 	{
 		VkResult res;
 
@@ -140,8 +48,8 @@ namespace forge
 		{
 			log_error(
 				"Instance version '{}' doesn't meet the minimum required version '{}'",
-				_forge_vulk_api_version_to_str(supported_version),
-				_forge_vulk_api_version_to_str(VK_API_VERSION_1_2)
+				_forge_api_version_to_str(supported_version),
+				_forge_api_version_to_str(VK_API_VERSION_1_2)
 			);
 
 			return false;
@@ -149,7 +57,7 @@ namespace forge
 
 		for (uint32_t i = 0; i < extensions_count; ++i)
 		{
-			if (_forge_vulk_instance_extension_support(extensions[i]) == false)
+			if (_forge_instance_extension_support(extensions[i]) == false)
 			{
 				log_error("Required instance extension '{}' is not supported", extensions[i]);
 
@@ -181,13 +89,174 @@ namespace forge
 		{
 			log_error(
 				"Failed to create the instance, the following error code '{}' is reported",
-				_forge_vulk_result_to_str(res)
+				_forge_result_to_str(res)
 			);
 
 			return false;
 		}
 
 		log_info("Vulkan instance was created successfully");
+
+		return true;
+	}
+
+	static bool
+	_forge_physical_device_init(Forge* forge)
+	{
+		VkResult res;
+
+		uint32_t count = 0;
+		res = vkEnumeratePhysicalDevices(forge->instance, &count, nullptr);
+		VK_RES_CHECK(res);
+
+		if (count == 0)
+		{
+			log_error("No physical devices found that support Vulkan");
+			return false;
+		}
+
+		std::vector<VkPhysicalDevice> physical_devices(count);
+		res = vkEnumeratePhysicalDevices(forge->instance, &count, physical_devices.data());
+		VK_RES_CHECK(res);
+
+		VkPhysicalDeviceProperties properties{};
+		VkPhysicalDevice chosen_device = VK_NULL_HANDLE;
+		uint32_t chosen_queue_family_index = 0;
+		std::string chose_device_name {};
+
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			const auto& physical_device = physical_devices[i];
+			vkGetPhysicalDeviceProperties(physical_device, &properties);
+			if (properties.apiVersion < VK_API_VERSION_1_2)
+			{
+				continue;
+			}
+
+			uint32_t queue_families_count = 0;
+			vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_families_count, nullptr);
+
+			std::vector<VkQueueFamilyProperties> queue_families_properties(queue_families_count);
+			vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_families_count, queue_families_properties.data());
+
+			for (uint32_t j = 0; j < queue_families_count; ++j)
+			{
+				const auto& queue_family_properties = queue_families_properties[j];
+
+				if (queue_family_properties.queueCount > 0 &&
+					queue_family_properties.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+				{
+					VkBool32 supports_present;
+				#ifdef VK_USE_PLATFORM_WIN32_KHR
+					supports_present = vkGetPhysicalDeviceWin32PresentationSupportKHR(physical_device, j);
+				#elif
+					log_error("Platform is not supported");
+					return false;
+				#endif
+
+					if (supports_present)
+					{
+
+						chosen_device = physical_device;
+						chose_device_name = std::string(properties.deviceName);
+						chosen_queue_family_index = j;
+						break;
+					}
+				}
+			}
+
+			if (chosen_device != VK_NULL_HANDLE && properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			{
+				break;
+			}
+		}
+
+		if (chosen_device == VK_NULL_HANDLE)
+		{
+			log_error("Failed to find a suitable physical device that meets the minimum requirements");
+			return false;
+		}
+
+		VkPhysicalDeviceMemoryProperties memory_properties{};
+		vkGetPhysicalDeviceMemoryProperties(chosen_device, &memory_properties);
+		uint64_t memory = 0u;
+
+		// TODO: Is this the correct way to get the VRAM of the device?
+		for (uint32_t i = 0; i < memory_properties.memoryTypeCount; ++i)
+		{
+			const auto& memory_type = memory_properties.memoryTypes[i];
+
+			if ((memory_type.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) && !(memory_type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+			{
+				memory = memory_properties.memoryHeaps[memory_type.heapIndex].size;
+			}
+		}
+
+		forge->physical_device = chosen_device;
+		forge->physical_device_memory_properties = memory_properties;
+		forge->physical_device_limits = properties.limits;
+		forge->physical_device_name = chose_device_name;
+		forge->physical_memory = memory;
+		forge->queue_family_index = chosen_queue_family_index;
+
+		log_info("Physical device '{}' was picked successfully and it has '{}' Gigabytes of memory", forge->physical_device_name, forge->physical_memory / (uint64_t)1e+9);
+
+		return true;
+	}
+
+	static bool
+	_forge_logical_device_init(Forge* forge)
+	{
+		VkResult res;
+
+		uint32_t extensions_count = 0;
+		const char** extensions = nullptr;
+		const char* extensions_list[] = {
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		};
+		extensions_count = sizeof(extensions_list) / sizeof(extensions_list[0]);
+		extensions = extensions_list;
+
+		for (uint32_t i = 0; i < extensions_count; ++i)
+		{
+			if (_forge_device_extension_support(forge, extensions[i]) == false)
+			{
+				log_error("Required device extension '{}' is not supported", extensions[i]);
+				return false;
+			}
+
+			log_info("Required device extension '{}' is supported", extensions[i]);
+		}
+
+		float queue_priorites[] = { 1.0f };
+
+		VkDeviceQueueCreateInfo queue_info{};
+		queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queue_info.queueFamilyIndex = forge->queue_family_index;
+		queue_info.queueCount = 1u;
+		queue_info.pQueuePriorities = queue_priorites;
+
+		VkDeviceCreateInfo device_info{};
+		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		device_info.queueCreateInfoCount = 1u;
+		device_info.pQueueCreateInfos = &queue_info;
+		device_info.enabledExtensionCount = extensions_count;
+		device_info.ppEnabledExtensionNames = extensions;
+		res = vkCreateDevice(forge->physical_device, &device_info, nullptr, &forge->device);
+		VK_RES_CHECK(res);
+
+		if (res != VK_SUCCESS)
+		{
+			log_error(
+				"Failed to create the device, the following error code '{}' is reported",
+				_forge_result_to_str(res)
+			);
+			return false;
+		}
+
+		vkGetDeviceQueue(forge->device, forge->queue_family_index, 0u, &forge->queue);
+
+		log_info("Device and Queue were created successfully");
 
 		return true;
 	}
@@ -201,21 +270,22 @@ namespace forge
 		// Log the debug message based on its severity
 		if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		{
-			log_error("Validation Layer Error: {}\n", pCallbackData->pMessage);
+			log_error("Validation Layer Error: {}", pCallbackData->pMessage);
 		}
 		else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		{
-			log_warning("Validation Layer Warning: {}\n", pCallbackData->pMessage);
+			log_warning("Validation Layer Warning: {}", pCallbackData->pMessage);
 		}
 		else
 		{
-			log_info("Validation Layer Info: {}\n", pCallbackData->pMessage);
+			log_info("Validation Layer Info: {}", pCallbackData->pMessage);
 		}
 
 		return VK_FALSE;
 	}
 
-	static bool _forge_vulk_debug_messenger_init(Forge* forge)
+	static bool
+	_forge_debug_messenger_init(Forge* forge)
 	{
 		VkResult res;
 
@@ -231,9 +301,9 @@ namespace forge
 		forge->pfn_vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(forge->instance, "vkCreateDebugUtilsMessengerEXT");
 		forge->pfn_vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(forge->instance, "vkDestroyDebugUtilsMessengerEXT");
 
-		// forge->pfn_vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(forge->device, "vkSetDebugUtilsObjectNameEXT");
-		// forge->pfn_vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(forge->device, "vkCmdBeginDebugUtilsLabelEXT");
-		// forge->pfn_vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(forge->device, "vkCmdEndDebugUtilsLabelEXT");
+		forge->pfn_vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(forge->device, "vkSetDebugUtilsObjectNameEXT");
+		forge->pfn_vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(forge->device, "vkCmdBeginDebugUtilsLabelEXT");
+		forge->pfn_vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(forge->device, "vkCmdEndDebugUtilsLabelEXT");
 
 		res = forge->pfn_vkCreateDebugUtilsMessengerEXT(forge->instance, &create_info, nullptr, &forge->debug_messenger);
 		VK_RES_CHECK(res);
@@ -244,10 +314,13 @@ namespace forge
 			return false;
 		}
 
+		log_info("Debug messenger was created successfully");
+
 		return true;
 	}
 
-	static void _forge_vulk_debug_obj_name_set(Forge* forge, uint64_t handle, VkObjectType type, const char* name)
+	static void
+	_forge_debug_obj_name_set(Forge* forge, uint64_t handle, VkObjectType type, const char* name)
 	{
 		VkDebugUtilsObjectNameInfoEXT name_info{};
 		name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
@@ -258,7 +331,8 @@ namespace forge
 		VK_RES_CHECK(res);
 	}
 
-	static void _forge_vulk_debug_begin_region(Forge* forge, VkCommandBuffer cmd_buffer, const char* region_name, float color[4])
+	static void
+	_forge_debug_begin_region(Forge* forge, VkCommandBuffer cmd_buffer, const char* region_name, float color[4])
 	{
 		VkDebugUtilsLabelEXT label_info{};
 		label_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -267,19 +341,31 @@ namespace forge
 		forge->pfn_vkCmdBeginDebugUtilsLabelEXT(cmd_buffer, &label_info);
 	}
 
-	static void _forge_vulk_debug_end_region(Forge* forge, VkCommandBuffer cmd_buffer)
+	static void
+	_forge_debug_end_region(Forge* forge, VkCommandBuffer cmd_buffer)
 	{
 		forge->pfn_vkCmdEndDebugUtilsLabelEXT(cmd_buffer);
 	}
 
-	static bool _forge_init(Forge* forge)
+	static bool
+	_forge_init(Forge* forge)
 	{
-		if (_forge_vulk_instance_init(forge) == false)
+		if (_forge_instance_init(forge) == false)
 		{
 			return false;
 		}
 
-		if (_forge_vulk_debug_messenger_init(forge) == false)
+		if (_forge_physical_device_init(forge) == false)
+		{
+			return false;
+		}
+
+		if (_forge_logical_device_init(forge) == false)
+		{
+			return false;
+		}
+
+		if (_forge_debug_messenger_init(forge) == false)
 		{
 			return false;
 		}
@@ -287,7 +373,8 @@ namespace forge
 		return true;
 	}
 
-	static void _forge_free(Forge* forge)
+	static void
+	_forge_free(Forge* forge)
 	{
 		if (forge->debug_messenger)
 		{
@@ -300,7 +387,8 @@ namespace forge
 		}
 	}
 
-	Forge* forge_new()
+	Forge*
+	forge_new()
 	{
 		auto forge = new Forge;
 		bool init = _forge_init(forge);
@@ -313,7 +401,8 @@ namespace forge
 		return forge;
 	}
 
-	void forge_destroy(Forge* forge)
+	void
+	forge_destroy(Forge* forge)
 	{
 		if (forge)
 		{

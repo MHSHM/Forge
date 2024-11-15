@@ -28,6 +28,7 @@ set(RHI_SOURCES
 set(RHI_HEADERS
     include/Forge.h
     include/ForgeLogger.h
+    include/ForgeUtils.h
     include/Swapchain.h
     # Add other public headers here
 )
