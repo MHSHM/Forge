@@ -2,11 +2,14 @@
 
 #include <Swapchain.h>
 
+#include <Forge.h>
 #include <ForgeLogger.h>
 
 int main()
 {
-	forge::log_error("this is an error {}", 1);
+	auto forge = forge::forge_new();
+
+	forge_destroy(forge);
 
 	return 0;
 }
