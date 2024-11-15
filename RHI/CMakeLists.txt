@@ -20,7 +20,7 @@ add_library(ForgeRHI STATIC)
 # Set the source files for ForgeRHI
 set(RHI_SOURCES
     src/Forge.cpp
-    src/Swapchain.cpp
+    src/ForgeSwapchain.cpp
     # Add other RHI source files here
 )
 
@@ -29,7 +29,7 @@ set(RHI_HEADERS
     include/Forge.h
     include/ForgeLogger.h
     include/ForgeUtils.h
-    include/Swapchain.h
+    include/ForgeSwapchain.h
     # Add other public headers here
 )
 

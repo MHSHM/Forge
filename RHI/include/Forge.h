@@ -1,8 +1,16 @@
 #pragma once
 
+#ifdef _WIN32
+#include <Windows.h>
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
+#define VK_RES_CHECK(res) assert(res == VK_SUCCESS);
+
 #include <vulkan/vulkan.h>
 
 #include <string>
+#include <assert.h>
 
 namespace forge
 {

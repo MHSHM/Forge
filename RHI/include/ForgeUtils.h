@@ -2,7 +2,9 @@
 
 #define VK_RES_CHECK(res) assert(res == VK_SUCCESS);
 
+#include "Forge.h"
 #include "ForgeLogger.h"
+#include "ForgeSwapchain.h"
 
 #include <vulkan/vulkan.h>
 
@@ -112,7 +114,7 @@ namespace forge
 		return false;
 	}
 
-	bool
+	static bool
 	_forge_device_extension_support(Forge* forge, const char* extension)
 	{
 		VkResult res;
@@ -134,5 +136,115 @@ namespace forge
 		}
 
 		return false;
+	}
+
+	static bool
+	_forge_surface_present_mode_support(Forge* forge, VkSurfaceKHR surface, VkPresentModeKHR mode)
+	{
+		VkResult res;
+
+		uint32_t present_modes_count = 0;
+		res = vkGetPhysicalDeviceSurfacePresentModesKHR(forge->physical_device, surface, &present_modes_count, nullptr);
+		VK_RES_CHECK(res);
+
+		std::vector<VkPresentModeKHR> present_modes(present_modes_count);
+		res = vkGetPhysicalDeviceSurfacePresentModesKHR(forge->physical_device, surface, &present_modes_count, present_modes.data());
+		VK_RES_CHECK(res);
+
+		for (auto& supported_mode : present_modes)
+		{
+			if (supported_mode == mode)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	static bool
+	_forge_surface_format_support(Forge* forge, VkSurfaceKHR surface, VkSurfaceFormatKHR format)
+	{
+		VkResult res;
+
+		uint32_t formats_count = 0;
+		res = vkGetPhysicalDeviceSurfaceFormatsKHR(forge->physical_device, surface, &formats_count, nullptr);
+		VK_RES_CHECK(res);
+
+		std::vector<VkSurfaceFormatKHR> surface_formats(formats_count);
+		res = vkGetPhysicalDeviceSurfaceFormatsKHR(forge->physical_device, surface, &formats_count, surface_formats.data());
+		VK_RES_CHECK(res);
+
+		for (auto& supported_format : surface_formats)
+		{
+			if (supported_format.colorSpace == format.colorSpace && supported_format.format == format.format)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	static const char*
+	_forge_surface_format_to_str(VkFormat format)
+	{
+		switch (format)
+		{
+		case VK_FORMAT_R8G8B8A8_UNORM:	return "VK_FORMAT_R8G8B8A8_UNORM";
+		default:
+			break;
+		}
+
+		log_warning("Provided format is not handled here\n");
+		return "";
+	}
+
+	static const char*
+	_forge_swapchain_present_mode_to_str(VkPresentModeKHR mode)
+	{
+		switch (mode)
+		{
+		case VK_PRESENT_MODE_IMMEDIATE_KHR:						return "VK_PRESENT_MODE_IMMEDIATE_KHR";
+		case VK_PRESENT_MODE_MAILBOX_KHR:						return "VK_PRESENT_MODE_MAILBOX_KHR";
+		case VK_PRESENT_MODE_FIFO_KHR:							return "VK_PRESENT_MODE_FIFO_KHR";
+		case VK_PRESENT_MODE_FIFO_RELAXED_KHR:					return "VK_PRESENT_MODE_FIFO_RELAXED_KHR";
+		case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:			return "VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR";
+		case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR:		return "VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR";
+		case VK_PRESENT_MODE_MAX_ENUM_KHR:
+		default:
+			break;
+		}
+
+		log_warning("Provided presentation mode is not handled here\n");
+		return "";
+	}
+
+	static void
+	_forge_debug_obj_name_set(Forge* forge, uint64_t handle, VkObjectType type, const char* name)
+	{
+		VkDebugUtilsObjectNameInfoEXT name_info{};
+		name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+		name_info.objectType = type;
+		name_info.objectHandle = handle;
+		name_info.pObjectName = name;
+		auto res = forge->pfn_vkSetDebugUtilsObjectNameEXT(forge->device, &name_info);
+		VK_RES_CHECK(res);
+	}
+
+	static void
+	_forge_debug_begin_region(Forge* forge, VkCommandBuffer cmd_buffer, const char* region_name, float color[4])
+	{
+		VkDebugUtilsLabelEXT label_info{};
+		label_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		label_info.pLabelName = region_name;
+		memcpy(label_info.color, color, 4 * sizeof(float));
+		forge->pfn_vkCmdBeginDebugUtilsLabelEXT(cmd_buffer, &label_info);
+	}
+
+	static void
+	_forge_debug_end_region(Forge* forge, VkCommandBuffer cmd_buffer)
+	{
+		forge->pfn_vkCmdEndDebugUtilsLabelEXT(cmd_buffer);
 	}
 };

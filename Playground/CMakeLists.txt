@@ -2,6 +2,15 @@
 cmake_minimum_required(VERSION 3.10)
 project(ForgePlayground)
 
+# Add GLFW dependency
+include(FetchContent)
+FetchContent_Declare(
+  glfw
+  GIT_REPOSITORY https://github.com/glfw/glfw
+  GIT_TAG        3.4
+) # 10.2.1
+FetchContent_MakeAvailable(glfw)
+
 # Set up the playground executable
 add_executable(ForgePlayground)
 
@@ -15,7 +24,7 @@ set(PLAYGROUND_SOURCES
 target_sources(ForgePlayground PRIVATE ${PLAYGROUND_SOURCES})
 
 # Link the RHI library to the playground
-target_link_libraries(ForgePlayground PRIVATE ForgeRHI)
+target_link_libraries(ForgePlayground PRIVATE ForgeRHI glfw)
 
 # Set C++ standard
 set_property(TARGET ForgePlayground PROPERTY CXX_STANDARD 17)

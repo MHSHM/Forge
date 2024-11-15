@@ -3,15 +3,12 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#define VK_RES_CHECK(res) assert(res == VK_SUCCESS);
-
 #include "Forge.h"
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 
 #include <vulkan/vulkan_win32.h>
 
-#include <assert.h>
 #include <vector>
 
 namespace forge
@@ -266,24 +263,20 @@ namespace forge
 		return true;
 	}
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debug_call_back(
+	static VKAPI_ATTR VkBool32 VKAPI_CALL
+	debug_call_back(
 		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 		void* pUserData) {
 
-		// Log the debug message based on its severity
 		if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		{
-			log_error("Validation Layer Error: {}", pCallbackData->pMessage);
+			log_error("{}", pCallbackData->pMessage);
 		}
-		else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		{
-			log_warning("Validation Layer Warning: {}", pCallbackData->pMessage);
-		}
-		else
-		{
-			log_info("Validation Layer Info: {}", pCallbackData->pMessage);
+			log_warning("{}", pCallbackData->pMessage);
 		}
 
 		return VK_FALSE;
@@ -324,34 +317,6 @@ namespace forge
 		return true;
 	}
 
-	static void
-	_forge_debug_obj_name_set(Forge* forge, uint64_t handle, VkObjectType type, const char* name)
-	{
-		VkDebugUtilsObjectNameInfoEXT name_info{};
-		name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-		name_info.objectType = type;
-		name_info.objectHandle = handle;
-		name_info.pObjectName = name;
-		auto res = forge->pfn_vkSetDebugUtilsObjectNameEXT(forge->device, &name_info);
-		VK_RES_CHECK(res);
-	}
-
-	static void
-	_forge_debug_begin_region(Forge* forge, VkCommandBuffer cmd_buffer, const char* region_name, float color[4])
-	{
-		VkDebugUtilsLabelEXT label_info{};
-		label_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-		label_info.pLabelName = region_name;
-		memcpy(label_info.color, color, 4 * sizeof(float));
-		forge->pfn_vkCmdBeginDebugUtilsLabelEXT(cmd_buffer, &label_info);
-	}
-
-	static void
-	_forge_debug_end_region(Forge* forge, VkCommandBuffer cmd_buffer)
-	{
-		forge->pfn_vkCmdEndDebugUtilsLabelEXT(cmd_buffer);
-	}
-
 	static bool
 	_forge_init(Forge* forge)
 	{
@@ -384,6 +349,11 @@ namespace forge
 		if (forge->debug_messenger)
 		{
 			forge->pfn_vkDestroyDebugUtilsMessengerEXT(forge->instance, forge->debug_messenger, nullptr);
+		}
+
+		if (forge->device)
+		{
+			vkDestroyDevice(forge->device, nullptr);
 		}
 
 		if (forge->instance)
