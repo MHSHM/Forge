@@ -15,8 +15,7 @@
 
 namespace forge
 {
-	inline static const char*
-	_forge_vulk_result_to_str(VkResult res)
+	static const char* _forge_vulk_result_to_str(VkResult res)
 	{
 		switch (res)
 		{
@@ -71,7 +70,7 @@ namespace forge
 			break;
 		}
 
-		log_warning("Provided error code is not handled here\n");
+		log_warning("Provided error code '{}' is not handled here", res);
 		return "";
 	}
 
@@ -130,6 +129,7 @@ namespace forge
 		const char* extensions_list[] = {
 			VK_KHR_SURFACE_EXTENSION_NAME,
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+			VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 		};
 		extensions_count = sizeof(extensions_list) / sizeof(extensions_list[0]);
 		extensions = extensions_list;
@@ -192,9 +192,94 @@ namespace forge
 		return true;
 	}
 
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debug_call_back(
+		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+		VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData) {
+
+		// Log the debug message based on its severity
+		if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			log_error("Validation Layer Error: {}\n", pCallbackData->pMessage);
+		}
+		else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		{
+			log_warning("Validation Layer Warning: {}\n", pCallbackData->pMessage);
+		}
+		else
+		{
+			log_info("Validation Layer Info: {}\n", pCallbackData->pMessage);
+		}
+
+		return VK_FALSE;
+	}
+
+	static bool _forge_vulk_debug_messenger_init(Forge* forge)
+	{
+		VkResult res;
+
+		VkDebugUtilsMessengerCreateInfoEXT create_info {};
+		create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		create_info.pfnUserCallback = debug_call_back;
+
+		forge->pfn_vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(forge->instance, "vkCreateDebugUtilsMessengerEXT");
+		forge->pfn_vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(forge->instance, "vkDestroyDebugUtilsMessengerEXT");
+
+		// forge->pfn_vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(forge->device, "vkSetDebugUtilsObjectNameEXT");
+		// forge->pfn_vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(forge->device, "vkCmdBeginDebugUtilsLabelEXT");
+		// forge->pfn_vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(forge->device, "vkCmdEndDebugUtilsLabelEXT");
+
+		res = forge->pfn_vkCreateDebugUtilsMessengerEXT(forge->instance, &create_info, nullptr, &forge->debug_messenger);
+		VK_RES_CHECK(res);
+
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to create the debug messenger");
+			return false;
+		}
+
+		return true;
+	}
+
+	static void _forge_vulk_debug_obj_name_set(Forge* forge, uint64_t handle, VkObjectType type, const char* name)
+	{
+		VkDebugUtilsObjectNameInfoEXT name_info{};
+		name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+		name_info.objectType = type;
+		name_info.objectHandle = handle;
+		name_info.pObjectName = name;
+		auto res = forge->pfn_vkSetDebugUtilsObjectNameEXT(forge->device, &name_info);
+		VK_RES_CHECK(res);
+	}
+
+	static void _forge_vulk_debug_begin_region(Forge* forge, VkCommandBuffer cmd_buffer, const char* region_name, float color[4])
+	{
+		VkDebugUtilsLabelEXT label_info{};
+		label_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		label_info.pLabelName = region_name;
+		memcpy(label_info.color, color, 4 * sizeof(float));
+		forge->pfn_vkCmdBeginDebugUtilsLabelEXT(cmd_buffer, &label_info);
+	}
+
+	static void _forge_vulk_debug_end_region(Forge* forge, VkCommandBuffer cmd_buffer)
+	{
+		forge->pfn_vkCmdEndDebugUtilsLabelEXT(cmd_buffer);
+	}
+
 	static bool _forge_init(Forge* forge)
 	{
 		if (_forge_vulk_instance_init(forge) == false)
+		{
+			return false;
+		}
+
+		if (_forge_vulk_debug_messenger_init(forge) == false)
 		{
 			return false;
 		}
@@ -204,6 +289,11 @@ namespace forge
 
 	static void _forge_free(Forge* forge)
 	{
+		if (forge->debug_messenger)
+		{
+			forge->pfn_vkDestroyDebugUtilsMessengerEXT(forge->instance, forge->debug_messenger, nullptr);
+		}
+
 		if (forge->instance)
 		{
 			vkDestroyInstance(forge->instance, nullptr);
