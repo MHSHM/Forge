@@ -5,7 +5,7 @@
 namespace forge
 {
 	static bool
-	_forge_buffer_init(Forge* forge, ForgeBuffer* buffer, void* data, uint32_t size)
+	_forge_buffer_init(Forge* forge, ForgeBuffer* buffer)
 	{
 		VkResult res;
 
@@ -67,6 +67,8 @@ namespace forge
 	static void
 	_forge_buffer_write(Forge* forge, ForgeBuffer* buffer, void* data, uint32_t size)
 	{
+		VkResult res;
+
 		if (buffer->description.memory_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
 		{
 			memcpy(buffer->mapped_ptr, data, size);
@@ -84,7 +86,48 @@ namespace forge
 		}
 		else
 		{
-		
+			// TODO: Handle the size of the data exceeding
+
+			auto staging_buffer = forge->staging_buffer;
+
+			if (staging_buffer->cursor + size > staging_buffer->description.size)
+			{
+				staging_buffer->cursor = 0;
+
+				VkSubmitInfo submit_info{};
+				submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submit_info.commandBufferCount = 1;
+				submit_info.pCommandBuffers = &forge->staging_command_buffer;
+				res = vkQueueSubmit(forge->queue, 1u, &submit_info, VK_NULL_HANDLE);
+
+				// TODO: We shouldn't halt the whole queue for this
+				vkQueueWaitIdle(forge->queue);
+			}
+
+			if (size > staging_buffer->description.size)
+			{
+				// TODO: Fix this
+
+				assert(false && "Data exceeds the staging memory size");
+			}
+			else
+			{
+				memcpy((char*)staging_buffer->mapped_ptr + staging_buffer->cursor, data, size);
+
+				VkCommandBufferBeginInfo begin_info{};
+				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+				res = vkBeginCommandBuffer(forge->staging_command_buffer, &begin_info);
+				VK_RES_CHECK(res);
+
+				VkBufferCopy copy_region{};
+				copy_region.srcOffset = staging_buffer->cursor;
+				copy_region.dstOffset = 0u;
+				copy_region.size = size;
+				vkCmdCopyBuffer(forge->staging_command_buffer, staging_buffer->handle, buffer->handle, 1, &copy_region);
+
+				vkEndCommandBuffer(forge->staging_command_buffer);
+			}
 		}
 	}
 
@@ -103,12 +146,12 @@ namespace forge
 	}
 
 	ForgeBuffer*
-	forge_buffer_new(Forge* forge, ForgeBufferDescription descriptrion, void* data, uint32_t size)
+	forge_buffer_new(Forge* forge, ForgeBufferDescription descriptrion)
 	{
 		auto buffer = new ForgeBuffer();
 		buffer->description = descriptrion;
 
-		if (_forge_buffer_init(forge, buffer, data, size) == false)
+		if (_forge_buffer_init(forge, buffer) == false)
 		{
 			forge_buffer_destroy(forge, buffer);
 			return nullptr;

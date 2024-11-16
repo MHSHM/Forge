@@ -24,7 +24,7 @@ namespace forge
 	};
 
 	ForgeBuffer*
-	forge_buffer_new(Forge* forge, ForgeBufferDescription descriptrion, void* data, uint32_t size);
+	forge_buffer_new(Forge* forge, ForgeBufferDescription descriptrion);
 
 	void
 	forge_buffer_write(Forge* forge, ForgeBuffer* buffer, void* data, uint32_t size);

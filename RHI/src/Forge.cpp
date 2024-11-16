@@ -6,6 +6,7 @@
 #include "Forge.h"
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
+#include "ForgeBuffer.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -13,6 +14,8 @@
 
 namespace forge
 {
+	static constexpr uint32_t STAGING_BUFFER_SIZE = 64000u;
+
 	static bool
 	_forge_instance_init(Forge* forge)
 	{
@@ -318,6 +321,56 @@ namespace forge
 	}
 
 	static bool
+	_forge_command_pool_init(Forge* forge)
+	{
+		VkCommandPoolCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		info.queueFamilyIndex = forge->queue_family_index;
+		auto res = vkCreateCommandPool(forge->device, &info, nullptr, &forge->command_pool);
+		VK_RES_CHECK(res);
+
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to create the global command pool");
+			return false;
+		}
+
+		return true;
+	}
+
+	static bool
+	_forge_staging_buffer_init(Forge* forge)
+	{
+		ForgeBufferDescription desc {};
+		desc.name = "Forge staging buffer";
+		desc.size = STAGING_BUFFER_SIZE;
+		desc.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		desc.memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		forge->staging_buffer = forge_buffer_new(forge, desc);
+		if (forge->staging_buffer == nullptr)
+		{
+			return false;
+		}
+
+		log_info("Global staging buffer was creating successfully");
+
+		VkCommandBufferAllocateInfo info {};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		info.commandBufferCount = 1u;
+		info.commandPool = forge->command_pool;
+		auto res = vkAllocateCommandBuffers(forge->device, &info, &forge->staging_command_buffer);
+		VK_RES_CHECK(res);
+
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to create the global staging command buffer");
+			return false;
+		}
+
+		return true;
+	}
+
+	static bool
 	_forge_init(Forge* forge)
 	{
 		if (_forge_instance_init(forge) == false)
@@ -336,6 +389,16 @@ namespace forge
 		}
 
 		if (_forge_debug_messenger_init(forge) == false)
+		{
+			return false;
+		}
+
+		if (_forge_command_pool_init(forge) == false)
+		{
+			return false;
+		}
+
+		if (_forge_staging_buffer_init(forge) == false)
 		{
 			return false;
 		}

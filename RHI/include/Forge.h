@@ -32,6 +32,7 @@ namespace forge
 		VkCommandPool command_pool;
 
 		ForgeBuffer* staging_buffer;
+		VkCommandBuffer staging_command_buffer;
 
 		VkDebugUtilsMessengerEXT debug_messenger;
 		PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT;

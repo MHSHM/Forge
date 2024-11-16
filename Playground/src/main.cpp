@@ -41,7 +41,7 @@ int main()
 	buffer_desc.size = 1024;
 	buffer_desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	buffer_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    auto buffer = forge::forge_buffer_new(forge, buffer_desc, nullptr, 0);
+    auto buffer = forge::forge_buffer_new(forge, buffer_desc);
 
 	/*
 		auto frame = forge_frame_new(render_target);
