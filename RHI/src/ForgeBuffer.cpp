@@ -91,6 +91,7 @@ namespace forge
 			auto staging_buffer = forge->staging_buffer;
 			char* source_data = (char*)data;
 			uint32_t remaining_size = size;
+			uint32_t count = 0u;
 
 			VkCommandBufferBeginInfo begin_info{};
 			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -100,7 +101,7 @@ namespace forge
 
 			while (remaining_size > 0)
 			{
-				uint32_t chunk_size = min(remaining_size, staging_buffer->description.size);
+				uint32_t chunk_size = std::min(remaining_size, staging_buffer->description.size);
 
 				if (staging_buffer->cursor + chunk_size > staging_buffer->description.size)
 				{
@@ -120,9 +121,6 @@ namespace forge
 					// TODO: We shouldn't halt the whole queue for this
 					vkQueueWaitIdle(forge->queue);
 
-					VkCommandBufferBeginInfo begin_info{};
-					begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-					begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 					res = vkBeginCommandBuffer(forge->staging_command_buffer, &begin_info);
 					VK_RES_CHECK(res);
 				}
@@ -138,7 +136,12 @@ namespace forge
 				staging_buffer->cursor += chunk_size;
 				source_data += chunk_size;
 				remaining_size -= chunk_size;
+
+				++count;
 			}
+
+			log_info("Writing operation to '{}' was done using '{}' copy operations (Staging buffer size: {}, Total data size: {})",
+				buffer->description.name, count, staging_buffer->description.size, size);
 
 			vkEndCommandBuffer(forge->staging_command_buffer);
 		}
