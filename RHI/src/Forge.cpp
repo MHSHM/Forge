@@ -14,7 +14,7 @@
 
 namespace forge
 {
-	static constexpr uint32_t STAGING_BUFFER_SIZE = 64000u;
+	static constexpr uint32_t STAGING_BUFFER_SIZE = 64u;
 
 	static bool
 	_forge_instance_init(Forge* forge)
@@ -326,6 +326,7 @@ namespace forge
 		VkCommandPoolCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		info.queueFamilyIndex = forge->queue_family_index;
+		info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		auto res = vkCreateCommandPool(forge->device, &info, nullptr, &forge->command_pool);
 		VK_RES_CHECK(res);
 

@@ -89,45 +89,58 @@ namespace forge
 			// TODO: Handle the size of the data exceeding
 
 			auto staging_buffer = forge->staging_buffer;
+			char* source_data = (char*)data;
+			uint32_t remaining_size = size;
 
-			if (staging_buffer->cursor + size > staging_buffer->description.size)
+			VkCommandBufferBeginInfo begin_info{};
+			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			res = vkBeginCommandBuffer(forge->staging_command_buffer, &begin_info);
+			VK_RES_CHECK(res);
+
+			while (remaining_size > 0)
 			{
-				staging_buffer->cursor = 0;
+				uint32_t chunk_size = min(remaining_size, staging_buffer->description.size);
 
-				VkSubmitInfo submit_info{};
-				submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-				submit_info.commandBufferCount = 1;
-				submit_info.pCommandBuffers = &forge->staging_command_buffer;
-				res = vkQueueSubmit(forge->queue, 1u, &submit_info, VK_NULL_HANDLE);
+				if (staging_buffer->cursor + chunk_size > staging_buffer->description.size)
+				{
+					staging_buffer->cursor = 0;
 
-				// TODO: We shouldn't halt the whole queue for this
-				vkQueueWaitIdle(forge->queue);
-			}
+					vkEndCommandBuffer(forge->staging_command_buffer);
 
-			if (size > staging_buffer->description.size)
-			{
-				// TODO: Fix this
+					// Submit pending transfer operations
+					VkSubmitInfo submit_info{};
+					submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+					submit_info.commandBufferCount = 1;
+					submit_info.pCommandBuffers = &forge->staging_command_buffer;
+					res = vkQueueSubmit(forge->queue, 1u, &submit_info, VK_NULL_HANDLE);
+					VK_RES_CHECK(res);
 
-				assert(false && "Data exceeds the staging memory size");
-			}
-			else
-			{
-				memcpy((char*)staging_buffer->mapped_ptr + staging_buffer->cursor, data, size);
+					// Wait for the queue to ensure all transfers are complete
+					// TODO: We shouldn't halt the whole queue for this
+					vkQueueWaitIdle(forge->queue);
 
-				VkCommandBufferBeginInfo begin_info{};
-				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-				res = vkBeginCommandBuffer(forge->staging_command_buffer, &begin_info);
-				VK_RES_CHECK(res);
+					VkCommandBufferBeginInfo begin_info{};
+					begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+					begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+					res = vkBeginCommandBuffer(forge->staging_command_buffer, &begin_info);
+					VK_RES_CHECK(res);
+				}
+
+				memcpy((char*)staging_buffer->mapped_ptr + staging_buffer->cursor, source_data, chunk_size);
 
 				VkBufferCopy copy_region{};
 				copy_region.srcOffset = staging_buffer->cursor;
-				copy_region.dstOffset = 0u;
-				copy_region.size = size;
+				copy_region.dstOffset = size - remaining_size;
+				copy_region.size = chunk_size;
 				vkCmdCopyBuffer(forge->staging_command_buffer, staging_buffer->handle, buffer->handle, 1, &copy_region);
 
-				vkEndCommandBuffer(forge->staging_command_buffer);
+				staging_buffer->cursor += chunk_size;
+				source_data += chunk_size;
+				remaining_size -= chunk_size;
 			}
+
+			vkEndCommandBuffer(forge->staging_command_buffer);
 		}
 	}
 

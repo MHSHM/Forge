@@ -36,12 +36,16 @@ int main()
 	desc.window = hwnd;
 	auto swapchain = forge::forge_swapchain_new(forge, desc);
 
+    float vertices[] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+
 	forge::ForgeBufferDescription buffer_desc{};
 	buffer_desc.name = "Forge buffer";
 	buffer_desc.size = 1024;
-	buffer_desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	buffer_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	buffer_desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	buffer_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     auto buffer = forge::forge_buffer_new(forge, buffer_desc);
+
+    forge::forge_buffer_write(forge, buffer, vertices, sizeof(vertices));
 
 	/*
 		auto frame = forge_frame_new(render_target);
