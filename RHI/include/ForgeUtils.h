@@ -247,4 +247,19 @@ namespace forge
 	{
 		forge->pfn_vkCmdEndDebugUtilsLabelEXT(cmd_buffer);
 	}
+
+	static uint32_t
+	_find_memory_type(Forge* forge, uint32_t type_filter, VkMemoryPropertyFlags properties) {
+		VkPhysicalDeviceMemoryProperties mem_properties;
+		vkGetPhysicalDeviceMemoryProperties(forge->physical_device, &mem_properties);
+
+		for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
+			if ((type_filter & (1 << i)) && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+				return i;
+			}
+		}
+
+		assert(false && "Failed to find suitable memory type!");
+		return 0;
+	}
 };

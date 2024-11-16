@@ -365,9 +365,8 @@ namespace forge
 	Forge*
 	forge_new()
 	{
-		auto forge = new Forge;
-		bool init = _forge_init(forge);
-		if (init == false)
+		auto forge = new Forge();
+		if (_forge_init(forge) == false)
 		{
 			forge_destroy(forge);
 			return  nullptr;

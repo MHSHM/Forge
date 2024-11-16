@@ -217,7 +217,7 @@ namespace forge
 	ForgeSwapchain*
 	forge_swapchain_new(Forge* forge, ForgeSwapchainDescription description)
 	{
-		auto swapchain = new ForgeSwapchain;
+		auto swapchain = new ForgeSwapchain();
 		swapchain->description = description;
 
 		if (_forge_swapchain_init(forge, swapchain) == false)

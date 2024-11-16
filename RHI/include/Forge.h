@@ -14,6 +14,8 @@
 
 namespace forge
 {
+	struct ForgeBuffer;
+
 	struct Forge
 	{
 		VkInstance instance;
@@ -27,6 +29,9 @@ namespace forge
 
 		VkDevice device;
 		VkQueue queue;
+		VkCommandPool command_pool;
+
+		ForgeBuffer* staging_buffer;
 
 		VkDebugUtilsMessengerEXT debug_messenger;
 		PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT;
