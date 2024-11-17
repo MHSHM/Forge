@@ -86,8 +86,6 @@ namespace forge
 		}
 		else
 		{
-			// TODO: Handle the size of the data exceeding
-
 			auto staging_buffer = forge->staging_buffer;
 			char* source_data = (char*)data;
 			uint32_t remaining_size = size;
