@@ -9,6 +9,7 @@
 #include <ForgeLogger.h>
 #include <ForgeSwapchain.h>
 #include <ForgeBuffer.h>
+#include <ForgeImage.h>
 
 inline static void
 _glfw_error_callback(int error, const char* description)
@@ -46,6 +47,24 @@ int main()
     auto buffer = forge::forge_buffer_new(forge, buffer_desc);
 
     forge::forge_buffer_write(forge, buffer, vertices, sizeof(vertices));
+
+    std::vector<float> data;
+
+    for (uint32_t i = 0; i < 400 * 400 * 4; ++i)
+    {
+        data.push_back(1.0f);
+    }
+
+    forge::ForgeImageDescription image_desc {};
+    image_desc.extent = {400, 400, 1};
+    image_desc.format = VK_FORMAT_R8G8B8A8_UNORM;
+    image_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    image_desc.name = "Forge Image";
+    image_desc.type = VK_IMAGE_TYPE_2D;
+    image_desc.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    auto image = forge::forge_image_new(forge, image_desc);
+
+    forge::forge_image_write(forge, image, {data.data()});
 
 	/*
 		auto frame = forge_frame_new(render_target);

@@ -90,6 +90,77 @@ namespace forge
 		return "";
 	}
 
+	static uint32_t
+	_forge_get_format_size(VkFormat format)
+	{
+		switch (format)
+		{
+			// 1-component formats
+			case VK_FORMAT_R8_UNORM:
+			case VK_FORMAT_R8_SNORM:
+			case VK_FORMAT_R8_UINT:
+			case VK_FORMAT_R8_SINT:
+				return 1; // 8 bits = 1 byte
+
+			// 2-component formats
+			case VK_FORMAT_R8G8_UNORM:
+			case VK_FORMAT_R8G8_SNORM:
+			case VK_FORMAT_R8G8_UINT:
+			case VK_FORMAT_R8G8_SINT:
+				return 2; // 16 bits = 2 bytes
+
+			// 4-component formats (RGBA)
+			case VK_FORMAT_R8G8B8A8_UNORM:
+			case VK_FORMAT_R8G8B8A8_SNORM:
+			case VK_FORMAT_R8G8B8A8_UINT:
+			case VK_FORMAT_R8G8B8A8_SINT:
+			case VK_FORMAT_B8G8R8A8_UNORM:
+			case VK_FORMAT_B8G8R8A8_SNORM:
+			case VK_FORMAT_B8G8R8A8_UINT:
+			case VK_FORMAT_B8G8R8A8_SINT:
+				return 4; // 32 bits = 4 bytes
+
+			// 16-bit float formats
+			case VK_FORMAT_R16_SFLOAT:
+				return 2; // 16 bits = 2 bytes
+
+			case VK_FORMAT_R16G16_SFLOAT:
+				return 4; // 16 bits x 2 = 4 bytes
+
+			case VK_FORMAT_R16G16B16A16_SFLOAT:
+				return 8; // 16 bits x 4 = 8 bytes
+
+			// 32-bit float formats
+			case VK_FORMAT_R32_SFLOAT:
+				return 4; // 32 bits = 4 bytes
+
+			case VK_FORMAT_R32G32_SFLOAT:
+				return 8; // 32 bits x 2 = 8 bytes
+
+			case VK_FORMAT_R32G32B32A32_SFLOAT:
+				return 16; // 32 bits x 4 = 16 bytes
+
+			// Depth-stencil formats
+			case VK_FORMAT_D16_UNORM:
+				return 2; // 16 bits = 2 bytes
+
+			case VK_FORMAT_D32_SFLOAT:
+				return 4; // 32 bits = 4 bytes
+
+			case VK_FORMAT_D24_UNORM_S8_UINT:
+				return 4; // 24 bits depth + 8 bits stencil = 4 bytes
+
+			case VK_FORMAT_D32_SFLOAT_S8_UINT:
+				return 5; // 32 bits depth + 8 bits stencil = 5 bytes
+
+			default:
+				log_error("Unhandled format");
+				assert(false);
+		}
+
+		return 0;
+	}
+
 	static bool
 	_forge_instance_extension_support(const char* extension)
 	{

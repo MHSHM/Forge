@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <string>
+
 namespace forge
 {
 	struct Forge;
@@ -14,6 +16,7 @@ namespace forge
 		VkFormat format;
 		VkImageUsageFlags usage;
 		VkMemoryPropertyFlags memory_properties;
+		VkImageCreateFlags create_flags;
 	};
 
 	struct ForgeImageData
@@ -28,11 +31,11 @@ namespace forge
 		VkImage handle;
 		VkImageView view;
 		VkSampler sampler;
-		ForgeImageDescription descriptrion;
+		ForgeImageDescription description;
 	};
 
 	ForgeImage*
-	forge_image_new(Forge* forge, ForgeImageDescription descriptrion);
+	forge_image_new(Forge* forge, ForgeImageDescription description);
 
 	void
 	forge_image_write(Forge* forge, ForgeImage* image, ForgeImageData data);
