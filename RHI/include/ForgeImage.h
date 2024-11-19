@@ -19,13 +19,6 @@ namespace forge
 		VkImageCreateFlags create_flags;
 	};
 
-	struct ForgeImageData
-	{
-		// In case of cubemap each entry will hold the data of each face
-		// otherwise the data will be in data[0]
-		void* data[6];
-	};
-
 	struct ForgeImage
 	{
 		VkImage handle;
@@ -38,7 +31,7 @@ namespace forge
 	forge_image_new(Forge* forge, ForgeImageDescription description);
 
 	void
-	forge_image_write(Forge* forge, ForgeImage* image, ForgeImageData data);
+	forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data);
 
 	void
 	forge_image_destroy(Forge* forge, ForgeImage* image);

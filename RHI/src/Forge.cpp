@@ -14,7 +14,7 @@
 
 namespace forge
 {
-	static constexpr uint32_t STAGING_BUFFER_SIZE = 64u;
+	static constexpr uint32_t STAGING_BUFFER_SIZE = 32 << 20;
 
 	static bool
 	_forge_instance_init(Forge* forge)

@@ -91,7 +91,7 @@ namespace forge
 	}
 
 	static uint32_t
-	_forge_get_format_size(VkFormat format)
+	_forge_format_size(VkFormat format)
 	{
 		switch (format)
 		{
@@ -159,6 +159,48 @@ namespace forge
 		}
 
 		return 0;
+	}
+
+	static VkImageAspectFlags
+	_forge_image_aspect(VkFormat format)
+	{
+		switch (format)
+		{
+		case VK_FORMAT_R8_UNORM:
+		case VK_FORMAT_R8_SNORM:
+		case VK_FORMAT_R8G8_UNORM:
+		case VK_FORMAT_R8G8B8_UNORM:
+		case VK_FORMAT_B8G8R8_UNORM:
+		case VK_FORMAT_R8G8B8A8_UNORM:
+		case VK_FORMAT_B8G8R8A8_UNORM:
+		case VK_FORMAT_R16_UNORM:
+		case VK_FORMAT_R16_SFLOAT:
+		case VK_FORMAT_R16G16_UNORM:
+		case VK_FORMAT_R16G16_SFLOAT:
+		case VK_FORMAT_R16G16B16_UNORM:
+		case VK_FORMAT_R16G16B16_SFLOAT:
+		case VK_FORMAT_R16G16B16A16_UNORM:
+		case VK_FORMAT_R32_UINT:
+		case VK_FORMAT_R32_SFLOAT:
+		case VK_FORMAT_R32G32_SFLOAT:
+		case VK_FORMAT_R32G32B32_UINT:
+		case VK_FORMAT_R32G32B32_SFLOAT:
+		case VK_FORMAT_R32G32B32A32_SFLOAT:
+			return VK_IMAGE_ASPECT_COLOR_BIT;
+		case VK_FORMAT_D16_UNORM:
+		case VK_FORMAT_D32_SFLOAT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT;
+		case VK_FORMAT_D16_UNORM_S8_UINT:
+		case VK_FORMAT_D24_UNORM_S8_UINT:
+		case VK_FORMAT_D32_SFLOAT_S8_UINT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT;
+		default:
+			log_error("Unhandled format");
+			assert(false);
+			break;
+		}
+
+		return 0u;
 	}
 
 	static bool
