@@ -196,14 +196,12 @@ namespace forge
 				VK_RES_CHECK(res);
             }
 
-            if (staging_buffer->cursor + write_size > staging_buffer->description.size)
-            {
-                write_size = staging_buffer->description.size;
-            }
+			if (staging_buffer->cursor + write_size > staging_buffer->description.size)
+			{
+				write_size = staging_buffer->description.size;
+			}
 
             write_size -= (write_size % row_size);
-            if (write_size == 0)
-                write_size = size - written_size;
 
 			memcpy((char*)staging_buffer->mapped_ptr + staging_buffer->cursor, (char*)data + written_size, write_size);
 
@@ -239,10 +237,10 @@ namespace forge
 			1u, &barrier
 		);
 
+		vkEndCommandBuffer(forge->staging_command_buffer);
+
 		log_info("Writing operation to '{}' was done using '{}' copy operations (Staging buffer size: {}, Total data size: {})",
 			image->description.name, count, staging_buffer->description.size, size);
-
-		vkEndCommandBuffer(forge->staging_command_buffer);
     }
 
     void
