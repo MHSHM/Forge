@@ -6,116 +6,235 @@
 
 namespace forge
 {
-    static bool
-    _forge_image_init(Forge* forge, ForgeImage* image)
-    {
-        VkResult res;
+	static bool
+	_forge_image_init(Forge* forge, ForgeImage* image)
+	{
+		VkResult res;
 
-        bool is_cube_map = image->description.create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-        if (is_cube_map)
-        {
-            if (image->description.extent.width != image->description.extent.height)
-            {
-                log_error("Cubemaps should have identical width and height");
-                return false;
-            }
-        }
+		bool is_cube_map = image->description.create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		if (is_cube_map)
+		{
+			if (image->description.extent.width != image->description.extent.height)
+			{
+				log_error("Cubemaps should have identical width and height");
+				return false;
+			}
+		}
 
-        VkImageCreateInfo image_info{};
-        image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        image_info.flags = image->description.create_flags;
-        image_info.imageType = image->description.type;
-        image_info.extent = image->description.extent;
-        image_info.mipLevels = 1;
-        image_info.arrayLayers = is_cube_map ? 6u : 1;
-        image_info.format = image->description.format;
-        image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-        image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        image_info.usage = image->description.usage;
-        image_info.samples = VK_SAMPLE_COUNT_1_BIT;
-        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		uint32_t levels_count = 1u;
+		if (image->description.mipmaps == true)
+		{
+			uint32_t largest_dimension = std::max({ image->description.extent.width, image->description.extent.height, 1u });
+			levels_count = static_cast<uint32_t>(std::floor(std::log2(largest_dimension))) + 1;
+		}
 
-        res = vkCreateImage(forge->device, &image_info, nullptr, &image->handle);
-        VK_RES_CHECK(res);
+		VkImageCreateInfo image_info{};
+		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		image_info.flags = image->description.create_flags;
+		image_info.imageType = image->description.type;
+		image_info.extent = image->description.extent;
+		image_info.mipLevels = levels_count;
+		image_info.arrayLayers = is_cube_map ? 6u : 1;
+		image_info.format = image->description.format;
+		image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		image_info.usage = image->description.usage;
+		image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (res != VK_SUCCESS)
-        {
-            log_error("Failed to create image '{}'", image->description.name);
-            return false;
-        }
+		res = vkCreateImage(forge->device, &image_info, nullptr, &image->handle);
+		VK_RES_CHECK(res);
 
-        VkMemoryRequirements mem_requirements;
-        vkGetImageMemoryRequirements(forge->device, image->handle, &mem_requirements);
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to create image '{}'", image->description.name);
+			return false;
+		}
 
-        VkMemoryAllocateInfo alloc_info{};
-        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        alloc_info.allocationSize = mem_requirements.size;
-        alloc_info.memoryTypeIndex = _find_memory_type(forge, mem_requirements.memoryTypeBits, image->description.memory_properties);
+		VkMemoryRequirements mem_requirements;
+		vkGetImageMemoryRequirements(forge->device, image->handle, &mem_requirements);
 
-        VkDeviceMemory memory;
-        res = vkAllocateMemory(forge->device, &alloc_info, nullptr, &memory);
-        VK_RES_CHECK(res);
+		VkMemoryAllocateInfo alloc_info{};
+		alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		alloc_info.allocationSize = mem_requirements.size;
+		alloc_info.memoryTypeIndex = _find_memory_type(forge, mem_requirements.memoryTypeBits, image->description.memory_properties);
 
-        if (res != VK_SUCCESS)
-        {
-            log_error("Failed to allocate memory for image '{}'", image->description.name);
-            return false;
-        }
+		VkDeviceMemory memory;
+		res = vkAllocateMemory(forge->device, &alloc_info, nullptr, &memory);
+		VK_RES_CHECK(res);
 
-        res = vkBindImageMemory(forge->device, image->handle, memory, 0);
-        VK_RES_CHECK(res);
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to allocate memory for image '{}'", image->description.name);
+			return false;
+		}
 
-        VkImageViewCreateInfo view_info {};
-        view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        view_info.image = image->handle;
-        view_info.viewType = is_cube_map ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
-        view_info.format = image->description.format;
-        view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        view_info.subresourceRange.baseMipLevel = 0;
-        view_info.subresourceRange.levelCount = 1;
-        view_info.subresourceRange.baseArrayLayer = 0;
-        view_info.subresourceRange.layerCount = is_cube_map ? 6u : 1;
+		res = vkBindImageMemory(forge->device, image->handle, memory, 0);
+		VK_RES_CHECK(res);
 
-        res = vkCreateImageView(forge->device, &view_info, nullptr, &image->view);
-        VK_RES_CHECK(res);
+		VkImageViewCreateInfo view_info{};
+		view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		view_info.image = image->handle;
+		view_info.viewType = is_cube_map ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
+		view_info.format = image->description.format;
+		view_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		view_info.subresourceRange.baseMipLevel = 0;
+		view_info.subresourceRange.levelCount = levels_count;
+		view_info.subresourceRange.baseArrayLayer = 0;
+		view_info.subresourceRange.layerCount = is_cube_map ? 6u : 1;
 
-        if (res != VK_SUCCESS)
-        {
-            log_error("Failed to create image view for '{}'", image->description.name);
-            return false;
-        }
+		res = vkCreateImageView(forge->device, &view_info, nullptr, &image->view);
+		VK_RES_CHECK(res);
 
-        if (image->description.name.empty() == false)
-        {
-            _forge_debug_obj_name_set(forge, (uint64_t)image->handle, VK_OBJECT_TYPE_IMAGE, image->description.name.c_str());
-        }
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to create image view for '{}'", image->description.name);
+			return false;
+		}
 
-        log_info("Image '{}' initialized successfully", image->description.name);
+		if (image->description.name.empty() == false)
+		{
+			_forge_debug_obj_name_set(forge, (uint64_t)image->handle, VK_OBJECT_TYPE_IMAGE, image->description.name.c_str());
+		}
 
-        return true;
-    }
+		log_info("Image '{}' initialized successfully", image->description.name);
 
-    static void
-    _forge_image_free(Forge* forge, ForgeImage* image)
-    {
-        if (image->view)
-        {
-            vkDestroyImageView(forge->device, image->view, nullptr);
-        }
+		return true;
+	}
 
-        if (image->handle)
-        {
-            vkDestroyImage(forge->device, image->handle, nullptr);
-        }
-    }
+	static void
+	_forge_image_free(Forge* forge, ForgeImage* image)
+	{
+		if (image->view)
+		{
+			vkDestroyImageView(forge->device, image->view, nullptr);
+		}
 
-    static void
-    _forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
-    {
+		if (image->handle)
+		{
+			vkDestroyImage(forge->device, image->handle, nullptr);
+		}
+	}
+
+	static void
+	_forge_image_generate_mipmaps(Forge* forge, VkCommandBuffer command_buffer, ForgeImage* image)
+	{
+		uint32_t layers_count = image->description.create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6u : 1;
+		uint32_t largest_dimension = std::max({ image->description.extent.width, image->description.extent.height, 1u });
+		uint32_t levels_count = static_cast<uint32_t>(std::floor(std::log2(largest_dimension))) + 1;
+		VkImageAspectFlags aspect = _forge_image_aspect(image->description.format);
+
+		VkImageMemoryBarrier barrier {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.image = image->handle;
+		barrier.subresourceRange.aspectMask = aspect;
+		barrier.subresourceRange.baseMipLevel = 0u;
+		barrier.subresourceRange.levelCount = levels_count;
+		barrier.subresourceRange.baseArrayLayer = 0u;
+		barrier.subresourceRange.layerCount = layers_count;
+		vkCmdPipelineBarrier(
+			command_buffer,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0u,
+			0u, nullptr,
+			0u, nullptr,
+			1u, &barrier
+		);
+
+		int32_t mip_width = image->description.extent.width;
+		int32_t mip_height = image->description.extent.height;
+
+		for (uint32_t i = 0; i < levels_count - 1; ++i)
+		{
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.subresourceRange.baseMipLevel = i;
+			barrier.subresourceRange.levelCount = 1u;
+			vkCmdPipelineBarrier(
+				command_buffer,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				0u,
+				0u, nullptr,
+				0u, nullptr,
+				1u, &barrier
+			);
+
+			VkImageBlit blit {};
+			blit.srcOffsets[0] = { 0, 0, 0 };
+			blit.srcOffsets[1] = { mip_width, mip_height, 1 };
+			blit.srcSubresource.aspectMask = aspect;
+			blit.srcSubresource.mipLevel = i;
+			blit.srcSubresource.baseArrayLayer = 0;
+			blit.srcSubresource.layerCount = layers_count;
+			blit.dstOffsets[0] = { 0, 0, 0 };
+			blit.dstOffsets[1] = { std::max(mip_width / 2, 1), std::max(mip_height / 2, 1), 1 };
+			blit.dstSubresource.aspectMask = aspect;
+			blit.dstSubresource.mipLevel = i + 1;
+			blit.dstSubresource.baseArrayLayer = 0;
+			blit.dstSubresource.layerCount = layers_count;
+
+			vkCmdBlitImage(
+				command_buffer,
+				image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				1, &blit,
+				VK_FILTER_LINEAR
+			);
+
+			mip_width = std::max(mip_width / 2u, 1u);
+			mip_height = std::max(mip_height / 2u, 1u);
+		}
+
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.subresourceRange.baseMipLevel = levels_count - 1u;
+		barrier.subresourceRange.levelCount = 1u;
+		vkCmdPipelineBarrier(
+			command_buffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0u,
+			0u, nullptr,
+			0u, nullptr,
+			1u, &barrier
+		);
+
+		barrier.srcAccessMask = 0u;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		barrier.subresourceRange.baseMipLevel = 0u;
+		barrier.subresourceRange.levelCount = levels_count;
+		vkCmdPipelineBarrier(
+			command_buffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			0u,
+			0u, nullptr,
+			0u, nullptr,
+			1u, &barrier
+		);
+
+		log_info("'{}' mipmaps generated successfully for '{}'", levels_count, image->description.name);
+	}
+
+	static void
+	_forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
+	{
 		VkResult res;
 
 		auto remaining_size = size;
@@ -226,47 +345,50 @@ namespace forge
 
 		log_info("Writing operation to '{}' was done using '{}' copy operations (Staging buffer size: {}, Total data size: {})",
 			image->description.name, count, staging_buffer->description.size, size);
-    }
+	}
 
-    ForgeImage*
-    forge_image_new(Forge* forge, ForgeImageDescription descriptrion)
-    {
-        auto image = new ForgeImage;
-        image->description = descriptrion;
+	ForgeImage*
+	forge_image_new(Forge* forge, ForgeImageDescription descriptrion)
+	{
+		auto image = new ForgeImage;
+		image->description = descriptrion;
 
-        if (!_forge_image_init(forge, image))
-        {
-            forge_image_destroy(forge, image);
-            return nullptr;
-        }
+		if (!_forge_image_init(forge, image))
+		{
+			forge_image_destroy(forge, image);
+			return nullptr;
+		}
 
-        return image;
-    }
-
-    void
-    forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
-    {
-        auto expected_size = image->description.extent.width * image->description.extent.height * _forge_format_size(image->description.format);
-
-        if (size != expected_size) { log_error("Size doesn't match the expected size based on the image format"); return; }
-        if (layer > 1 && ((image->description.create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) == 0)) { log_error("Layer can't be larger than '1' if the image is not a cubemaps"); return; }
-        if (layer > 6) { log_error("Layer can't be larger than 6 (cube faces)"); return; }
-
-        _forge_image_write(forge, image, layer, size, data);
-    }
+		return image;
+	}
 
 	void
-	forge_image_generate_mipmaps(Forge* forge, ForgeImage* image)
-    {
-    }
+	forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
+	{
+		auto expected_size = image->description.extent.width * image->description.extent.height * _forge_format_size(image->description.format);
 
-    void
-    forge_image_destroy(Forge* forge, ForgeImage* image)
-    {
-        if (image)
-        {
-            _forge_image_free(forge, image);
-            delete image;
-        }
-    }
+		if (size != expected_size) { log_error("Size doesn't match the expected size based on the image format"); return; }
+		if (layer > 1 && ((image->description.create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) == 0)) { log_error("Layer can't be larger than '1' if the image is not a cubemaps"); return; }
+		if (layer > 6) { log_error("Layer can't be larger than 6 (cube faces)"); return; }
+
+		_forge_image_write(forge, image, layer, size, data);
+	}
+
+	void
+	forge_image_generate_mipmaps(Forge* forge, VkCommandBuffer command_buffer, ForgeImage* image)
+	{
+		if (image->description.mipmaps == false) { log_warning("Image was not marked as it should have mipmaps, skipping the operation"); return; }
+
+		_forge_image_generate_mipmaps(forge, command_buffer, image);
+	}
+
+	void
+	forge_image_destroy(Forge* forge, ForgeImage* image)
+	{
+		if (image)
+		{
+			_forge_image_free(forge, image);
+			delete image;
+		}
+	}
 }
