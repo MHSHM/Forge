@@ -35,7 +35,7 @@ namespace forge
 	forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data);
 
 	void
-	forge_image_generate_mipmaps(Forge* forge, VkCommandBuffer command_buffer, ForgeImage* image);
+	forge_image_mipmaps_generate(Forge* forge, VkCommandBuffer command_buffer, ForgeImage* image);
 
 	void
 	forge_image_destroy(Forge* forge, ForgeImage* image);
