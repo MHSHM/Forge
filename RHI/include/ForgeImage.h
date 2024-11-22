@@ -17,6 +17,7 @@ namespace forge
 		VkImageUsageFlags usage;
 		VkMemoryPropertyFlags memory_properties;
 		VkImageCreateFlags create_flags;
+		bool mipmaps;
 	};
 
 	struct ForgeImage
@@ -32,6 +33,9 @@ namespace forge
 
 	void
 	forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data);
+
+	void
+	forge_image_generate_mipmaps(Forge* forge, ForgeImage* image);
 
 	void
 	forge_image_destroy(Forge* forge, ForgeImage* image);

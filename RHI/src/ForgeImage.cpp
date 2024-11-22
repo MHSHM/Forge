@@ -113,32 +113,17 @@ namespace forge
         }
     }
 
-    ForgeImage*
-    forge_image_new(Forge* forge, ForgeImageDescription descriptrion)
+    static void
+    _forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
     {
-        auto image = new ForgeImage;
-        image->description = descriptrion;
+		VkResult res;
 
-        if (!_forge_image_init(forge, image))
-        {
-            forge_image_destroy(forge, image);
-            return nullptr;
-        }
-
-        return image;
-    }
-
-    void
-    forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
-    {
-        VkResult res;
-
-        auto remaining_size = size;
-        auto staging_buffer = forge->staging_buffer;
-        auto staging_command_buffer = forge->staging_command_buffer;
-        auto format_size = _forge_format_size(image->description.format);
-        auto row_size = image->description.extent.width * format_size;
-        auto count = 0u;
+		auto remaining_size = size;
+		auto staging_buffer = forge->staging_buffer;
+		auto staging_command_buffer = forge->staging_command_buffer;
+		auto format_size = _forge_format_size(image->description.format);
+		auto row_size = image->description.extent.width * format_size;
+		auto count = 0u;
 
 		VkCommandBufferBeginInfo begin_info{};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -146,36 +131,36 @@ namespace forge
 		res = vkBeginCommandBuffer(staging_command_buffer, &begin_info);
 		VK_RES_CHECK(res);
 
-        VkImageMemoryBarrier barrier {};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.image = image->handle;
-        barrier.subresourceRange.aspectMask = _forge_image_aspect(image->description.format);;
-        barrier.subresourceRange.baseMipLevel = 0u;
-        barrier.subresourceRange.levelCount = 1u;
-        barrier.subresourceRange.baseArrayLayer = layer;
-        barrier.subresourceRange.layerCount = 1u;
-        vkCmdPipelineBarrier(
-            staging_command_buffer,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0u,
-            0u, nullptr,
-            0u, nullptr,
-            1u, &barrier
-        );
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.image = image->handle;
+		barrier.subresourceRange.aspectMask = _forge_image_aspect(image->description.format);;
+		barrier.subresourceRange.baseMipLevel = 0u;
+		barrier.subresourceRange.levelCount = 1u;
+		barrier.subresourceRange.baseArrayLayer = layer;
+		barrier.subresourceRange.layerCount = 1u;
+		vkCmdPipelineBarrier(
+			staging_command_buffer,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0u,
+			0u, nullptr,
+			0u, nullptr,
+			1u, &barrier
+		);
 
-        while (remaining_size > 0)
-        {
-            auto write_size = remaining_size;
+		while (remaining_size > 0)
+		{
+			auto write_size = remaining_size;
 			auto written_size = size - remaining_size;
-            bool reset = (staging_buffer->cursor + write_size > staging_buffer->description.size) || (staging_buffer->cursor % format_size != 0);
+			bool reset = (staging_buffer->cursor + write_size > staging_buffer->description.size) || (staging_buffer->cursor % format_size != 0);
 
-            if (reset)
-            {
+			if (reset)
+			{
 				staging_buffer->cursor = 0;
 
 				vkEndCommandBuffer(staging_command_buffer);
@@ -194,34 +179,34 @@ namespace forge
 
 				res = vkBeginCommandBuffer(staging_command_buffer, &begin_info);
 				VK_RES_CHECK(res);
-            }
+			}
 
 			if (staging_buffer->cursor + write_size > staging_buffer->description.size)
 			{
 				write_size = staging_buffer->description.size;
 			}
 
-            write_size -= (write_size % row_size);
+			write_size -= (write_size % row_size);
 
 			memcpy((char*)staging_buffer->mapped_ptr + staging_buffer->cursor, (char*)data + written_size, write_size);
 
-            VkBufferImageCopy copy_info {};
-            copy_info.bufferOffset = staging_buffer->cursor;
-            copy_info.imageSubresource.aspectMask = _forge_image_aspect(image->description.format);
-            copy_info.imageSubresource.mipLevel = 0u;
-            copy_info.imageSubresource.baseArrayLayer = layer;
-            copy_info.imageSubresource.layerCount = 1u;
-            copy_info.imageOffset.x = 0u;
-            copy_info.imageOffset.y = written_size / row_size;
-            copy_info.imageExtent.width = image->description.extent.width;
-            copy_info.imageExtent.height = std::max(write_size / row_size, 1u);
-            copy_info.imageExtent.depth = 1u;
-            vkCmdCopyBufferToImage(staging_command_buffer, staging_buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
-            
-            staging_buffer->cursor += write_size;
-            remaining_size -= write_size;
-            count += 1u;
-        }
+			VkBufferImageCopy copy_info{};
+			copy_info.bufferOffset = staging_buffer->cursor;
+			copy_info.imageSubresource.aspectMask = _forge_image_aspect(image->description.format);
+			copy_info.imageSubresource.mipLevel = 0u;
+			copy_info.imageSubresource.baseArrayLayer = layer;
+			copy_info.imageSubresource.layerCount = 1u;
+			copy_info.imageOffset.x = 0u;
+			copy_info.imageOffset.y = written_size / row_size;
+			copy_info.imageExtent.width = image->description.extent.width;
+			copy_info.imageExtent.height = std::max(write_size / row_size, 1u);
+			copy_info.imageExtent.depth = 1u;
+			vkCmdCopyBufferToImage(staging_command_buffer, staging_buffer->handle, image->handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copy_info);
+
+			staging_buffer->cursor += write_size;
+			remaining_size -= write_size;
+			count += 1u;
+		}
 
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -241,6 +226,38 @@ namespace forge
 
 		log_info("Writing operation to '{}' was done using '{}' copy operations (Staging buffer size: {}, Total data size: {})",
 			image->description.name, count, staging_buffer->description.size, size);
+    }
+
+    ForgeImage*
+    forge_image_new(Forge* forge, ForgeImageDescription descriptrion)
+    {
+        auto image = new ForgeImage;
+        image->description = descriptrion;
+
+        if (!_forge_image_init(forge, image))
+        {
+            forge_image_destroy(forge, image);
+            return nullptr;
+        }
+
+        return image;
+    }
+
+    void
+    forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
+    {
+        auto expected_size = image->description.extent.width * image->description.extent.height * _forge_format_size(image->description.format);
+
+        if (size != expected_size) { log_error("Size doesn't match the expected size based on the image format"); return; }
+        if (layer > 1 && ((image->description.create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) == 0)) { log_error("Layer can't be larger than '1' if the image is not a cubemaps"); return; }
+        if (layer > 6) { log_error("Layer can't be larger than 6 (cube faces)"); return; }
+
+        _forge_image_write(forge, image, layer, size, data);
+    }
+
+	void
+	forge_image_generate_mipmaps(Forge* forge, ForgeImage* image)
+    {
     }
 
     void
