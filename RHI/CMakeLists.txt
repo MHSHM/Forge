@@ -23,6 +23,7 @@ set(RHI_SOURCES
     src/ForgeSwapchain.cpp
     src/ForgeBuffer.cpp
     src/ForgeImage.cpp
+    src/ForgeRenderPass.cpp
     # Add other RHI source files here
 )
 
@@ -34,6 +35,7 @@ set(RHI_HEADERS
     include/ForgeSwapchain.h
     include/ForgeBuffer.h
     include/ForgeImage.h
+    include/ForgeRenderPass.h
     # Add other public headers here
 )
 

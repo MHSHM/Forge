@@ -363,6 +363,16 @@ namespace forge
 	}
 
 	void
+	forge_image_destroy(Forge* forge, ForgeImage* image)
+	{
+		if (image)
+		{
+			_forge_image_free(forge, image);
+			delete image;
+		}
+	}
+
+	void
 	forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
 	{
 		auto expected_size = image->description.extent.width * image->description.extent.height * _forge_format_size(image->description.format);
@@ -380,15 +390,5 @@ namespace forge
 		if (image->description.mipmaps == false) { log_warning("Image was not marked as it should have mipmaps, skipping the operation"); return; }
 
 		_forge_image_mipmaps_generate(forge, command_buffer, image);
-	}
-
-	void
-	forge_image_destroy(Forge* forge, ForgeImage* image)
-	{
-		if (image)
-		{
-			_forge_image_free(forge, image);
-			delete image;
-		}
 	}
 }
