@@ -23,7 +23,8 @@ namespace forge
 	struct ForgeImage
 	{
 		VkImage handle;
-		VkImageView view;
+		VkImageView shader_view;
+		VkImageView render_target_view;
 		VkSampler sampler;
 		ForgeImageDescription description;
 	};

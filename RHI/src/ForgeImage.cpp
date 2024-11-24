@@ -41,7 +41,6 @@ namespace forge
 		image_info.usage = image->description.usage;
 		image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 		image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
 		res = vkCreateImage(forge->device, &image_info, nullptr, &image->handle);
 		VK_RES_CHECK(res);
 
@@ -72,7 +71,8 @@ namespace forge
 		res = vkBindImageMemory(forge->device, image->handle, memory, 0);
 		VK_RES_CHECK(res);
 
-		VkImageViewCreateInfo view_info{};
+		// shader view
+		VkImageViewCreateInfo view_info {};
 		view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		view_info.image = image->handle;
 		view_info.viewType = is_cube_map ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
@@ -81,13 +81,19 @@ namespace forge
 		view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 		view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		view_info.subresourceRange.aspectMask = _forge_image_aspect(image->description.format);
 		view_info.subresourceRange.baseMipLevel = 0;
 		view_info.subresourceRange.levelCount = levels_count;
 		view_info.subresourceRange.baseArrayLayer = 0;
 		view_info.subresourceRange.layerCount = is_cube_map ? 6u : 1;
+		res = vkCreateImageView(forge->device, &view_info, nullptr, &image->shader_view);
+		VK_RES_CHECK(res);
 
-		res = vkCreateImageView(forge->device, &view_info, nullptr, &image->view);
+		// render target view
+		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		view_info.subresourceRange.levelCount = 1u;
+		view_info.subresourceRange.layerCount = 1u;
+		res = vkCreateImageView(forge->device, &view_info, nullptr, &image->render_target_view);
 		VK_RES_CHECK(res);
 
 		if (res != VK_SUCCESS)
@@ -109,9 +115,14 @@ namespace forge
 	static void
 	_forge_image_free(Forge* forge, ForgeImage* image)
 	{
-		if (image->view)
+		if (image->shader_view)
 		{
-			vkDestroyImageView(forge->device, image->view, nullptr);
+			vkDestroyImageView(forge->device, image->shader_view, nullptr);
+		}
+
+		if (image->render_target_view)
+		{
+			vkDestroyImageView(forge->device, image->render_target_view, nullptr);
 		}
 
 		if (image->handle)

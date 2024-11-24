@@ -59,18 +59,36 @@ int main()
     image_desc.extent = {1024, 1024, 1};
     image_desc.format = VK_FORMAT_R32G32B32A32_SFLOAT;
     image_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    image_desc.name = "Forge Image";
+    image_desc.name = "Color 0";
     image_desc.type = VK_IMAGE_TYPE_2D;
     image_desc.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     image_desc.mipmaps = true;
-    auto image = forge::forge_image_new(forge, image_desc);
+    auto color_0 = forge::forge_image_new(forge, image_desc);
+
+    image_desc.format = VK_FORMAT_R32G32_SFLOAT;
+    image_desc.name = "Color 1";
+    auto color_1 = forge::forge_image_new(forge, image_desc);
+
+    image_desc.format = VK_FORMAT_D32_SFLOAT;
+    image_desc.name = "Depth";
+    image_desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    auto depth = forge::forge_image_new(forge, image_desc);
 
     forge::ForgeRenderPassDescription render_pass_desc {};
-    render_pass_desc.colors[0].image = image;
+    render_pass_desc.colors[0].image = color_0;
     render_pass_desc.colors[0].initial_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     render_pass_desc.colors[0].final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     render_pass_desc.colors[0].load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
     render_pass_desc.colors[0].store_op = VK_ATTACHMENT_STORE_OP_STORE;
+    render_pass_desc.colors[1] = render_pass_desc.colors[0];
+    render_pass_desc.colors[1].image = color_1;
+
+    render_pass_desc.depth.image = depth;
+    render_pass_desc.depth.initial_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    render_pass_desc.depth.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	render_pass_desc.depth.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	render_pass_desc.depth.store_op = VK_ATTACHMENT_STORE_OP_STORE;
+
     auto render_pass = forge::forge_render_pass_new(forge, render_pass_desc);
 
 	/*
