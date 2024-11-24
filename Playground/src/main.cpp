@@ -10,6 +10,7 @@
 #include <ForgeSwapchain.h>
 #include <ForgeBuffer.h>
 #include <ForgeImage.h>
+#include <ForgeRenderPass.h>
 
 inline static void
 _glfw_error_callback(int error, const char* description)
@@ -64,7 +65,13 @@ int main()
     image_desc.mipmaps = true;
     auto image = forge::forge_image_new(forge, image_desc);
 
-    forge::forge_image_write(forge, image, 0u, data.size() * sizeof(float), data.data());
+    forge::ForgeRenderPassDescription render_pass_desc {};
+    render_pass_desc.colors[0].image = image;
+    render_pass_desc.colors[0].initial_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    render_pass_desc.colors[0].final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    render_pass_desc.colors[0].load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    render_pass_desc.colors[0].store_op = VK_ATTACHMENT_STORE_OP_STORE;
+    auto render_pass = forge::forge_render_pass_new(forge, render_pass_desc);
 
 	/*
 		auto frame = forge_frame_new(render_target);
