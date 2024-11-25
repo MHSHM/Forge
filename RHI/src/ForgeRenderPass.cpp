@@ -129,7 +129,7 @@ namespace forge
 
 		if (res != VK_SUCCESS)
 		{
-			log_error("Failed to create framebuffer, the follwoing error code '{}', is reported", _forge_result_to_str(res));
+			log_error("Failed to create framebuffer, the following error code '{}', is reported", _forge_result_to_str(res));
 			return false;
 		}
 
@@ -214,6 +214,9 @@ namespace forge
 		if (has_attachment == false) { log_error("A render pass must have at least one attachment"); return nullptr; }
 		if (same_dimensions == false) { log_error("All attachments of a render pass must have the same dimensions"); return nullptr; }
 
+		render_pass->width  = width;
+		render_pass->height = height;
+
 		if (_forge_render_pass_init(forge, render_pass) == false)
 		{
 			forge_render_pass_destroy(forge, render_pass);
@@ -221,6 +224,90 @@ namespace forge
 		}
 
 		return render_pass;
+	}
+
+	void
+	forge_render_pass_begin(Forge* forge, VkCommandBuffer command_buffer, ForgeRenderPass* render_pass)
+	{
+		auto& render_pass_desc = render_pass->description;
+		auto& attachments = render_pass_desc.colors;
+		VkClearValue clear_values[FORGE_RENDER_PASS_MAX_ATTACHMENTS + 1] = {};
+		uint32_t attachments_count = 0u;
+
+		// TODO: Could be better
+		VkImageMemoryBarrier barrier {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.subresourceRange.baseArrayLayer = 0u;
+		barrier.subresourceRange.baseMipLevel = 0u;
+		barrier.subresourceRange.layerCount = 1u;
+		barrier.subresourceRange.levelCount = 1u;
+
+		// Transition to the expected initial layout
+		for (auto& attachment : attachments)
+		{
+			if (attachment.image == nullptr)
+				continue;
+
+			barrier.newLayout = attachment.initial_layout;
+			barrier.image = attachment.image->handle;
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			vkCmdPipelineBarrier(
+				command_buffer,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				0u,
+				0u, nullptr,
+				0u, nullptr,
+				1u, &barrier
+			);
+
+			clear_values[attachments_count].color = {
+				attachment.clear_action.color[0],
+				attachment.clear_action.color[1],
+				attachment.clear_action.color[2],
+				attachment.clear_action.color[3]
+			};
+
+			++attachments_count;
+		}
+
+		if (render_pass_desc.depth.image != nullptr)
+		{
+			barrier.newLayout = render_pass_desc.depth.initial_layout;
+			barrier.image = render_pass_desc.depth.image->handle;
+			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			vkCmdPipelineBarrier(
+				command_buffer,
+				VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				0u,
+				0u, nullptr,
+				0u, nullptr,
+				1u, &barrier
+			);
+
+			clear_values[attachments_count].depthStencil = {render_pass_desc.depth.clear_action.depth};
+
+			++attachments_count;
+		}
+
+		VkRenderPassBeginInfo render_pass_begin_info {};
+		render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		render_pass_begin_info.renderPass = render_pass->handle;
+		render_pass_begin_info.framebuffer = render_pass->framebuffer;
+		render_pass_begin_info.renderArea.extent = {render_pass->width, render_pass->height};
+		render_pass_begin_info.clearValueCount = attachments_count;
+		render_pass_begin_info.pClearValues = clear_values;
+		vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	}
+
+	void
+	forge_render_pass_end(Forge* forge, VkCommandBuffer command_buffer, ForgeRenderPass* render_pass)
+	{
+		
 	}
 
 	void

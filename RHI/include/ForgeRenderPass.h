@@ -9,6 +9,12 @@ namespace forge
 	struct Forge;
 	struct ForgeImage;
 
+	struct ForgeAttachmentClearAction
+	{
+		float color[4];
+		float depth;
+	};
+
 	struct ForgeAttachmentDescription
 	{
 		ForgeImage* image; // Doesn't own the image
@@ -16,6 +22,7 @@ namespace forge
 		VkAttachmentStoreOp store_op;
 		VkImageLayout initial_layout;
 		VkImageLayout final_layout;
+		ForgeAttachmentClearAction clear_action;
 	};
 
 	struct ForgeRenderPassDescription
@@ -28,11 +35,19 @@ namespace forge
 	{
 		VkRenderPass handle;
 		VkFramebuffer framebuffer;
+		uint32_t width;
+		uint32_t height;
 		ForgeRenderPassDescription description;
 	};
 
 	ForgeRenderPass*
 	forge_render_pass_new(Forge* forge, ForgeRenderPassDescription description);
+
+	void
+	forge_render_pass_begin(Forge* forge, VkCommandBuffer command_buffer, ForgeRenderPass* render_pass);
+
+	void
+	forge_render_pass_end(Forge* forge, VkCommandBuffer command_buffer, ForgeRenderPass* render_pass);
 
 	void
 	forge_render_pass_destroy(Forge* forge, ForgeRenderPass* render_pass);
