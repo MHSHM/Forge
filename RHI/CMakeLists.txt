@@ -36,6 +36,7 @@ set(RHI_HEADERS
     include/ForgeBuffer.h
     include/ForgeImage.h
     include/ForgeRenderPass.h
+    include/ForgeDeferedQueue.h
     # Add other public headers here
 )
 
