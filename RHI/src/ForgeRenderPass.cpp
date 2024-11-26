@@ -307,7 +307,7 @@ namespace forge
 	void
 	forge_render_pass_end(Forge* forge, VkCommandBuffer command_buffer, ForgeRenderPass* render_pass)
 	{
-		
+		vkCmdEndRenderPass(command_buffer);
 	}
 
 	void
