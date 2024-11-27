@@ -24,6 +24,7 @@ set(RHI_SOURCES
     src/ForgeBuffer.cpp
     src/ForgeImage.cpp
     src/ForgeRenderPass.cpp
+    src/ForgeDeferedQueue.cpp
     # Add other RHI source files here
 )
 

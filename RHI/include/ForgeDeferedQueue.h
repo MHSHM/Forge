@@ -9,7 +9,7 @@ namespace forge
 {
 	struct Forge;
 
-	struct ForgeDeferedQueue
+	struct ForgeDeferredQueue
 	{
 		struct Entry
 		{
@@ -21,12 +21,15 @@ namespace forge
 		std::vector<Entry> entries;
 	};
 
-	ForgeDeferedQueue*
-	forge_defered_queue_new(Forge* forge);
+	ForgeDeferredQueue*
+	forge_deferred_queue_new(Forge* forge);
 
 	void
-	forge_defered_queue_flush(Forge* forge, ForgeDeferedQueue* queue);
+	forge_deferred_queue_push(Forge* forge, ForgeDeferredQueue* queue, const std::function<void()>& task, uint64_t signal);
 
 	void
-	forge_defered_queue_destroy(Forge* forge, ForgeDeferedQueue* queue);
+	forge_deferred_queue_flush(Forge* forge, ForgeDeferredQueue* queue, bool immediate);
+
+	void
+	forge_deferred_queue_destroy(Forge* forge, ForgeDeferredQueue* queue);
 };

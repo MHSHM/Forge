@@ -11,6 +11,7 @@
 #include <ForgeBuffer.h>
 #include <ForgeImage.h>
 #include <ForgeRenderPass.h>
+#include <ForgeDeferedQueue.h>
 
 inline static void
 _glfw_error_callback(int error, const char* description)
@@ -90,6 +91,14 @@ int main()
 	render_pass_desc.depth.store_op = VK_ATTACHMENT_STORE_OP_STORE;
 
     auto render_pass = forge::forge_render_pass_new(forge, render_pass_desc);
+
+    auto defered_queue = forge::forge_deferred_queue_new(forge);
+
+    forge_deferred_queue_push(forge, defered_queue, [forge]() {
+        forge::log_info("Hello from the queue");
+    }, 0u);
+
+    forge::forge_deferred_queue_flush(forge, defered_queue, false);
 
 	/*
 		auto frame = forge_frame_new(render_target);
