@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ForgeRenderPass.h"
+
 #include <vulkan/vulkan.h>
 
 #include <string>
@@ -29,7 +31,16 @@ namespace forge
 
 	struct ForgePipelineDescription
 	{
-		// Different vulkan structures for pipeline creation
+		VkVertexInputBindingDescription bindings[FORGE_SHADER_MAX_INPUT_ATTRIBUTES];
+		VkPrimitiveTopology topology;
+		VkPolygonMode polygon_mode;
+		VkCullModeFlags cull_mode;
+		VkFrontFace front_face;
+		VkBool32 depth_test;
+		VkBool32 depth_write;
+		VkCompareOp depth_compare_op;
+		VkPipelineColorBlendAttachmentState blend_desc[FORGE_RENDER_PASS_MAX_ATTACHMENTS];
+		VkRenderPass pass;
 	};
 
 	struct ForgeShaderDescription
@@ -44,7 +55,7 @@ namespace forge
 		VkPipelineLayout pipeline_layout;
 		uint64_t uniform_offsets[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
 		ForgeShaderDescription description;
-		ForgePipelineDescription pipeline_description
+		ForgePipelineDescription pipeline_description;
 	};
 
 	ForgeShader*
