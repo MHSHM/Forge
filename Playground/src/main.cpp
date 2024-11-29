@@ -92,30 +92,12 @@ int main()
     image_desc.mipmaps = true;
     auto color_0 = forge::forge_image_new(forge, image_desc);
 
-    image_desc.format = VK_FORMAT_R32G32_SFLOAT;
-    image_desc.name = "Color 1";
-    auto color_1 = forge::forge_image_new(forge, image_desc);
-
-    image_desc.format = VK_FORMAT_D32_SFLOAT;
-    image_desc.name = "Depth";
-    image_desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    auto depth = forge::forge_image_new(forge, image_desc);
-
     forge::ForgeRenderPassDescription render_pass_desc {};
     render_pass_desc.colors[0].image = color_0;
     render_pass_desc.colors[0].initial_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     render_pass_desc.colors[0].final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     render_pass_desc.colors[0].load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
     render_pass_desc.colors[0].store_op = VK_ATTACHMENT_STORE_OP_STORE;
-    render_pass_desc.colors[1] = render_pass_desc.colors[0];
-    render_pass_desc.colors[1].image = color_1;
-
-    render_pass_desc.depth.image = depth;
-    render_pass_desc.depth.initial_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    render_pass_desc.depth.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	render_pass_desc.depth.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	render_pass_desc.depth.store_op = VK_ATTACHMENT_STORE_OP_STORE;
-
     auto render_pass = forge::forge_render_pass_new(forge, render_pass_desc);
 
     auto defered_queue = forge::forge_deferred_queue_new(forge);
@@ -128,7 +110,20 @@ int main()
 
     auto shader_code = _shader_code_read("shader.glsl");
 
-    auto shader = forge::forge_shader_new(forge, {}, "test shader", shader_code.c_str());
+    forge::ForgePipelineDescription pipeline_desc {};
+    pipeline_desc.bindings[0].binding = 0u;
+    pipeline_desc.bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    pipeline_desc.bindings[0].stride = sizeof(float) * 3;
+    pipeline_desc.blend_desc[0].blendEnable = true;
+    pipeline_desc.blend_desc[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR;
+    pipeline_desc.blend_desc[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	pipeline_desc.blend_desc[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+	pipeline_desc.blend_desc[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    pipeline_desc.blend_desc[0].colorBlendOp = VK_BLEND_OP_ADD;
+    pipeline_desc.blend_desc[0].alphaBlendOp = VK_BLEND_OP_ADD;
+    pipeline_desc.blend_desc[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    pipeline_desc.pass = render_pass;
+    auto shader = forge::forge_shader_new(forge, pipeline_desc, "test shader", shader_code.c_str());
 
 	/*
 		auto frame = forge_frame_new(render_target);

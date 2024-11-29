@@ -5,12 +5,14 @@
 #include <vulkan/vulkan.h>
 
 #include <string>
+#include <array>
 
 #include <shaderc/shaderc.hpp>
 
 namespace forge
 {
 	struct Forge;
+	struct ForgeRenderPass;
 
 	static constexpr uint32_t FORGE_SHADER_MAX_INPUT_ATTRIBUTES = 16u;
 	static constexpr uint32_t FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS = 8u;
@@ -40,15 +42,15 @@ namespace forge
 	struct ForgePipelineDescription
 	{
 		VkVertexInputBindingDescription bindings[FORGE_SHADER_MAX_INPUT_ATTRIBUTES];
-		VkPrimitiveTopology topology;
-		VkPolygonMode polygon_mode;
-		VkCullModeFlags cull_mode;
-		VkFrontFace front_face;
-		VkBool32 depth_test;
-		VkBool32 depth_write;
-		VkCompareOp depth_compare_op;
+		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		VkPolygonMode polygon_mode = VK_POLYGON_MODE_FILL;
+		VkCullModeFlags cull_mode = VK_CULL_MODE_NONE;
+		VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		VkBool32 depth_test = VK_TRUE;
+		VkBool32 depth_write = VK_TRUE;
+		VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
 		VkPipelineColorBlendAttachmentState blend_desc[FORGE_RENDER_PASS_MAX_ATTACHMENTS];
-		VkRenderPass pass;
+		ForgeRenderPass* pass; // Doesn't own it
 	};
 
 	struct ForgeShaderDescription
