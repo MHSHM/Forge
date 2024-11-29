@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include <shaderc/shaderc.hpp>
+
 namespace forge
 {
 	struct Forge;
@@ -13,20 +15,26 @@ namespace forge
 	static constexpr uint32_t FORGE_SHADER_MAX_INPUT_ATTRIBUTES = 16u;
 	static constexpr uint32_t FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS = 8u;
 
+	enum FORGE_SHADER_STAGE
+	{
+		FORGE_SHADER_STAGE_VERTEX,
+		FORGE_SHADER_STAGE_FRAGMENT,
+		FORGE_SHADER_STAGE_COUNT,
+	};
+
 	struct ForgeInputAttributeDescription
 	{
 		std::string name;
 		uint32_t location;
 		VkFormat format;
-		uint32_t binding;
 		uint32_t offset;
 	};
 
 	struct ForgeUniformBlockDescription
 	{
 		std::string name;
-		uint32_t binding;
 		uint32_t size;
+		VkShaderStageFlags stages;
 	};
 
 	struct ForgePipelineDescription
@@ -53,6 +61,9 @@ namespace forge
 	{
 		VkPipeline pipeline;
 		VkPipelineLayout pipeline_layout;
+		VkDescriptorSetLayout descriptor_set_layout;
+		VkShaderModule modules[FORGE_SHADER_STAGE_COUNT];
+		shaderc::SpvCompilationResult spirv[FORGE_SHADER_STAGE_COUNT];
 		uint64_t uniform_offsets[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
 		ForgeShaderDescription description;
 		ForgePipelineDescription pipeline_description;

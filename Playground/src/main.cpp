@@ -12,11 +12,37 @@
 #include <ForgeImage.h>
 #include <ForgeRenderPass.h>
 #include <ForgeDeferedQueue.h>
+#include <ForgeShader.h>
+
+#include <sstream>
+#include <fstream>
 
 inline static void
 _glfw_error_callback(int error, const char* description)
 {
 	forge::log_error("GLFW is reporting an error with code '{}' and message '{}'");
+}
+
+inline static std::string
+_shader_code_read(const char* path)
+{
+	std::stringstream source_code;
+	std::ifstream shader_file(path);
+	std::string line;
+
+	if (!shader_file.is_open())
+	{
+		forge::log_error("Failed to load the shader with the given path '{}'\n", path);
+		return "";
+	}
+
+	while (std::getline(shader_file, line))
+	{
+		source_code << line << '\n';
+	}
+
+	shader_file.close();
+	return source_code.str();
 }
 
 int main()
@@ -99,6 +125,10 @@ int main()
     }, 0u);
 
     forge::forge_deferred_queue_flush(forge, defered_queue, false);
+
+    auto shader_code = _shader_code_read("shader.glsl");
+
+    auto shader = forge::forge_shader_new(forge, {}, shader_code.c_str());
 
 	/*
 		auto frame = forge_frame_new(render_target);

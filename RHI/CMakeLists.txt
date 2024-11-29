@@ -2,6 +2,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(ForgeRHI)
 
+set(BUILD_TESTS OFF CACHE BOOL "Disable building tests" FORCE)
+set(BUILD_GMOCK OFF CACHE BOOL "Disable Google Mock" FORCE)
+
+if(MSVC)
+    add_compile_options(/wd4819)  # Disable warning about non-UTF8 source files (example)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3") # Set warning level to 3 (lower level)
+endif()
+
 # Find Vulkan
 find_package(Vulkan REQUIRED)
 
@@ -10,7 +18,7 @@ include(FetchContent)
 FetchContent_Declare(
     fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    GIT_TAG 9.1.0 # Specify a stable release version
+    GIT_TAG 9.1.0
 )
 FetchContent_MakeAvailable(fmt)
 
@@ -50,11 +58,18 @@ target_sources(ForgeRHI PRIVATE ${RHI_SOURCES} ${RHI_HEADERS})
 target_include_directories(ForgeRHI
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${Vulkan_INCLUDE_DIRS} # Vulkan include directories
+        ${Vulkan_LIBRARIES} # Vulkan include directories
+        ${shaderc_SOURCE_DIR}/include
 )
 
 # Link Vulkan to ForgeRHI
-target_link_libraries(ForgeRHI PUBLIC Vulkan::Vulkan fmt::fmt)
+target_link_libraries(ForgeRHI
+    PUBLIC
+        Vulkan::Vulkan
+        fmt::fmt
+        $ENV{VULKAN_SDK}/Lib/shaderc_combinedd.lib
+        $ENV{VULKAN_SDK}/Lib/spirv-cross-cored.lib
+)
 
 # Set C++ standard
 set_property(TARGET ForgeRHI PROPERTY CXX_STANDARD 17)
