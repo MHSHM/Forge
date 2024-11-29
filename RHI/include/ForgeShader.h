@@ -53,6 +53,7 @@ namespace forge
 
 	struct ForgeShaderDescription
 	{
+		std::string name;
 		ForgeInputAttributeDescription attributes[FORGE_SHADER_MAX_INPUT_ATTRIBUTES];
 		ForgeUniformBlockDescription uniforms[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
 	};
@@ -70,7 +71,7 @@ namespace forge
 	};
 
 	ForgeShader*
-	forge_shader_new(Forge* forge, ForgePipelineDescription pipeline_description, const char* shader_source_code);
+	forge_shader_new(Forge* forge, ForgePipelineDescription pipeline_description, const char* name, const char* shader_source_code);
 
 	void
 	forge_shader_destroy(Forge* forge, ForgeShader* shader);

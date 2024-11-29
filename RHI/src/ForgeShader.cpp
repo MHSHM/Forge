@@ -1,6 +1,7 @@
 #include "Forge.h"
 #include "ForgeShader.h"
 #include "ForgeLogger.h"
+#include "ForgeUtils.h"
 
 #include <vector>
 #include <assert.h>
@@ -58,14 +59,17 @@ namespace forge
 	}
 
 	static bool
-	_forge_shader_pipeline_layout_init(
-		Forge* forge,
-		VkDescriptorSetLayout set_layout,
-		ForgeShaderDescription shader_description,
-		ForgePipelineDescription pipeline_description,
-		VkPipelineLayout* layout)
+	_forge_shader_pipeline_init(Forge* forge, ForgeShader* shader)
+	{
+		return true;
+	}
+
+	static bool
+	_forge_shader_pipeline_layout_init(Forge* forge, ForgeShader* shader)
 	{
 		VkResult res;
+
+		auto& shader_description = shader->description;
 
 		std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -89,8 +93,8 @@ namespace forge
 		VkPipelineLayoutCreateInfo pipeline_layout_info = {};
 		pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipeline_layout_info.setLayoutCount = 1;
-		pipeline_layout_info.pSetLayouts = &set_layout;
-		res = vkCreatePipelineLayout(forge->device, &pipeline_layout_info, nullptr, layout);
+		pipeline_layout_info.pSetLayouts = &shader->descriptor_set_layout;
+		res = vkCreatePipelineLayout(forge->device, &pipeline_layout_info, nullptr, &shader->pipeline_layout);
 		VK_RES_CHECK(res);
 
 		if (res != VK_SUCCESS)
@@ -99,11 +103,13 @@ namespace forge
 			return false;
 		}
 
+		_forge_debug_obj_name_set(forge, (uint64_t)shader->pipeline_layout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, shader_description.name.c_str());
+
 		return true;
 	}
 
 	static bool
-	_forge_shader_pipeline_init(Forge* forge, ForgePipelineDescription pipeline_description, VkPipeline* pipeline)
+	_forge_shader_descriptor_set_layout_init(Forge* forge, ForgeShader* shader)
 	{
 		return true;
 	}
@@ -136,7 +142,7 @@ namespace forge
 	}
 
 	static bool
-	_forge_shader_description_init(Forge* forge, const char* shader_source_code, ForgeShader* shader)
+	_forge_shader_description_init(Forge* forge, const char* name, const char* shader_source_code, ForgeShader* shader)
 	{
 		auto& module = shader->spirv[FORGE_SHADER_STAGE_VERTEX];
 		auto& shader_description = shader->description;
@@ -158,16 +164,18 @@ namespace forge
 		_forge_shader_uniform_blocks_init(forge, FORGE_SHADER_STAGE_VERTEX, shader);
 		_forge_shader_uniform_blocks_init(forge, FORGE_SHADER_STAGE_FRAGMENT, shader);
 
+		shader_description.name = name;
+
 		return true;
 	}
 
 	static bool
-	_forge_shader_module_init(Forge* forge, FORGE_SHADER_STAGE stage, const char* source, ForgeShader* shader)
+	_forge_shader_module_init(Forge* forge, FORGE_SHADER_STAGE stage, const char* name, const char* source, ForgeShader* shader)
 	{
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		options.AddMacroDefinition(stage == FORGE_SHADER_STAGE_VERTEX ? "VERTEX_SHADER" : "FRAGMENT_SHADER");
-		shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(source, (shaderc_shader_kind)stage, source, options);
+		shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(source, (shaderc_shader_kind)stage, name, options);
 
 		if (module.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
@@ -188,25 +196,42 @@ namespace forge
 			return false;
 		}
 
+		_forge_debug_obj_name_set(forge, (uint64_t)shader->modules[stage], VK_OBJECT_TYPE_SHADER_MODULE, name);
+
 		shader->spirv[stage] = std::move(module);
 
 		return true;
 	}
 
 	static bool
-	_forge_shader_init(Forge* forge, ForgePipelineDescription pipeline_description, const char* shader_source_code, ForgeShader* shader)
+	_forge_shader_init(Forge* forge, ForgePipelineDescription pipeline_description, const char* name, const char* shader_source_code, ForgeShader* shader)
 	{
-		if (_forge_shader_module_init(forge, FORGE_SHADER_STAGE_VERTEX, shader_source_code, shader) == false)
+		if (_forge_shader_module_init(forge, FORGE_SHADER_STAGE_VERTEX, name, shader_source_code, shader) == false)
 		{
 			return false;
 		}
 
-		if (_forge_shader_module_init(forge, FORGE_SHADER_STAGE_FRAGMENT, shader_source_code, shader) == false)
+		if (_forge_shader_module_init(forge, FORGE_SHADER_STAGE_FRAGMENT, name, shader_source_code, shader) == false)
 		{
 			return false;
 		}
 
-		if (_forge_shader_description_init(forge, shader_source_code, shader) == false)
+		if (_forge_shader_description_init(forge, name, shader_source_code, shader) == false)
+		{
+			return false;
+		}
+
+		if (_forge_shader_descriptor_set_layout_init(forge, shader) == false)
+		{
+			return false;
+		}
+
+		if (_forge_shader_pipeline_layout_init(forge, shader) == false)
+		{
+			return false;
+		}
+
+		if (_forge_shader_pipeline_init(forge, shader) == false)
 		{
 			return false;
 		}
@@ -221,12 +246,12 @@ namespace forge
 	}
 
 	ForgeShader*
-	forge_shader_new(Forge* forge, ForgePipelineDescription pipeline_description, const char* shader_source_code)
+	forge_shader_new(Forge* forge, ForgePipelineDescription pipeline_description, const char* name, const char* shader_source_code)
 	{
 		ForgeShader* shader = new ForgeShader();
 		shader->pipeline_description = pipeline_description;
 
-		if (_forge_shader_init(forge, pipeline_description, shader_source_code, shader) == false)
+		if (_forge_shader_init(forge, pipeline_description, name, shader_source_code, shader) == false)
 		{
 			forge_shader_destroy(forge, shader);
 			return nullptr;

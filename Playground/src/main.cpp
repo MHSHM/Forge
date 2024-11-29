@@ -128,7 +128,7 @@ int main()
 
     auto shader_code = _shader_code_read("shader.glsl");
 
-    auto shader = forge::forge_shader_new(forge, {}, shader_code.c_str());
+    auto shader = forge::forge_shader_new(forge, {}, "test shader", shader_code.c_str());
 
 	/*
 		auto frame = forge_frame_new(render_target);
