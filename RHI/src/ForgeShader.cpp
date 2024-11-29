@@ -427,7 +427,30 @@ namespace forge
 	static void
 	_forge_shader_free(Forge* forge, ForgeShader* shader)
 	{
-		
+		if (shader->modules[FORGE_SHADER_STAGE_FRAGMENT])
+		{
+			vkDestroyShaderModule(forge->device, shader->modules[FORGE_SHADER_STAGE_FRAGMENT], nullptr);
+		}
+
+		if (shader->modules[FORGE_SHADER_STAGE_VERTEX])
+		{
+			vkDestroyShaderModule(forge->device, shader->modules[FORGE_SHADER_STAGE_VERTEX], nullptr);
+		}
+
+		if (shader->descriptor_set_layout)
+		{
+			vkDestroyDescriptorSetLayout(forge->device, shader->descriptor_set_layout, nullptr);
+		}
+
+		if (shader->pipeline_layout)
+		{
+			vkDestroyPipelineLayout(forge->device, shader->pipeline_layout, nullptr);
+		}
+
+		if (shader->pipeline)
+		{
+			vkDestroyPipeline(forge->device, shader->pipeline, nullptr);
+		}
 	}
 
 	ForgeShader*
