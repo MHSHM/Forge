@@ -34,6 +34,7 @@ set(RHI_SOURCES
     src/ForgeRenderPass.cpp
     src/ForgeDeferedQueue.cpp
     src/ForgeShader.cpp
+    src/ForgeBindingList.cpp
     # Add other RHI source files here
 )
 
@@ -48,6 +49,7 @@ set(RHI_HEADERS
     include/ForgeRenderPass.h
     include/ForgeDeferedQueue.h
     include/ForgeShader.h
+    include/ForgeBindingList.h
     # Add other public headers here
 )
 

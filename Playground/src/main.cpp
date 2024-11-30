@@ -13,6 +13,7 @@
 #include <ForgeRenderPass.h>
 #include <ForgeDeferedQueue.h>
 #include <ForgeShader.h>
+#include <ForgeBindingList.h>
 
 #include <sstream>
 #include <fstream>
@@ -124,6 +125,9 @@ int main()
     pipeline_desc.blend_desc[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     pipeline_desc.pass = render_pass;
     auto shader = forge::forge_shader_new(forge, pipeline_desc, "test shader", shader_code.c_str());
+
+    forge::ForgeBindingList list {};
+    forge::forge_binding_list_vertex_buffer_bind(forge, &list, shader, 0u, buffer);
 
 	/*
 		auto frame = forge_frame_new(render_target);
