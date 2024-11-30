@@ -50,6 +50,7 @@ set(RHI_HEADERS
     include/ForgeDeferedQueue.h
     include/ForgeShader.h
     include/ForgeBindingList.h
+    include/ForgeDescriptorSetManager.h
     # Add other public headers here
 )
 
