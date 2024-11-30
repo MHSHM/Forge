@@ -9,6 +9,7 @@ namespace forge
 {
 	struct Forge;
 	struct ForgeBindingList;
+	struct ForgeShader;
 
 	static constexpr uint32_t FORGE_DESCRIPTOR_SET_ALLOCATOR_MAX_SETS = 16u;
 
@@ -35,7 +36,7 @@ namespace forge
 	forge_descriptor_set_manager_new(Forge* forge);
 
 	VkDescriptorSet
-	forge_descriptor_set_manager_set_get(Forge* forge, ForgeDescriptorSetManager* manager, ForgeBindingList* binding_list);
+	forge_descriptor_set_manager_set_get(Forge* forge, ForgeDescriptorSetManager* manager, ForgeShader* shader, ForgeBindingList* binding_list);
 
 	void
 	forge_descriptor_set_manager_flush(Forge* forge, ForgeDescriptorSetManager* manager);

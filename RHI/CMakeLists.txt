@@ -35,6 +35,7 @@ set(RHI_SOURCES
     src/ForgeDeferedQueue.cpp
     src/ForgeShader.cpp
     src/ForgeBindingList.cpp
+    src/ForgeDescriptorSetManager.cpp
     # Add other RHI source files here
 )
 
