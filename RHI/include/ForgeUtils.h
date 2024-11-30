@@ -13,6 +13,13 @@
 
 namespace forge
 {
+	template <class T>
+	inline void _forge_hash_combine(uint64_t& seed, const T& v)
+	{
+		std::hash<T> hasher;
+		seed ^= hasher(v) + 0x9e3779b9u + (seed << 6u) + (seed >> 2u);
+	}
+
 	static const char*
 	_forge_result_to_str(VkResult res)
 	{

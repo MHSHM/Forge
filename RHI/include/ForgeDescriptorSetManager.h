@@ -24,6 +24,7 @@ namespace forge
 		VkDescriptorPool pool;
 		std::unordered_map<uint64_t, ForgeDescriptorSet> recently_used;
 		std::vector<VkDescriptorSet> available;
+		uint32_t allocatoed_sets;
 	};
 
 	struct ForgeDescriptorSetManager

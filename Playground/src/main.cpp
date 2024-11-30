@@ -14,6 +14,7 @@
 #include <ForgeDeferedQueue.h>
 #include <ForgeShader.h>
 #include <ForgeBindingList.h>
+#include <ForgeDescriptorSetManager.h>
 
 #include <sstream>
 #include <fstream>
@@ -129,9 +130,15 @@ int main()
     forge::ForgeBindingList list {};
     forge::forge_binding_list_vertex_buffer_bind(forge, &list, shader, 0u, buffer);
 
+    auto set_manager = forge::forge_descriptor_set_manager_new(forge);
+    auto set = forge::forge_descriptor_set_manager_set_get(forge, set_manager, shader, &list);
+    auto set_1 = forge::forge_descriptor_set_manager_set_get(forge, set_manager, shader, &list);
+
 	/*
 		auto frame = forge_frame_new(render_target);
 	*/
+
+
 
 	while (!glfwWindowShouldClose(window))
 	{
