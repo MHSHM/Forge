@@ -108,6 +108,7 @@ namespace forge
 		}
 
 		log_info("Image '{}' initialized successfully", image->description.name);
+		image->view_type = is_cube_map ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
 
 		return true;
 	}

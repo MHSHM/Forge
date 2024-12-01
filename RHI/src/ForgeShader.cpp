@@ -2,10 +2,12 @@
 #include "ForgeShader.h"
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
+#include "ForgeBindingList.h"
 
 #include <vector>
 #include <assert.h>
 
+#include <spirv-headers/spirv.hpp>
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_common.hpp>
 
@@ -41,6 +43,48 @@ namespace forge
 		}
 
 		return VK_FORMAT_R8G8B8A8_UNORM;
+	}
+
+	static VkFormat
+	_forge_spirv_image_format_vk_format(spv::ImageFormat format)
+	{
+		switch (format)
+		{
+		case spv::ImageFormatRgba32f:	return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case spv::ImageFormatRgba16f:	return VK_FORMAT_R16G16B16A16_SFLOAT;
+		case spv::ImageFormatR32f:		return VK_FORMAT_R32_SFLOAT;
+		case spv::ImageFormatRgba8:		return VK_FORMAT_R8G8B8A8_UNORM;
+		case spv::ImageFormatRg32f:		return VK_FORMAT_R32G32_SFLOAT;
+		case spv::ImageFormatRg16f:		return VK_FORMAT_R16G16_SFLOAT;
+		case spv::ImageFormatR16f:		return VK_FORMAT_R16_SFLOAT;
+		case spv::ImageFormatRgba16:	return VK_FORMAT_R16G16B16A16_UNORM;
+		case spv::ImageFormatRg16:		return VK_FORMAT_R16G16_UNORM;
+		case spv::ImageFormatRg8:		return VK_FORMAT_R8G8_UNORM;
+		case spv::ImageFormatR16:		return VK_FORMAT_R16_UNORM;
+		case spv::ImageFormatR8:		return VK_FORMAT_R8_UNORM;
+		default:
+			log_error("Unrecognized format");
+			assert(false);
+		}
+
+		return {};
+	}
+
+	static VkImageViewType
+	_forge_spirv_image_dim_view_type(spv::Dim dim)
+	{
+		switch (dim)
+		{
+		case spv::Dim1D:	return VK_IMAGE_VIEW_TYPE_1D;
+		case spv::Dim2D:	return VK_IMAGE_VIEW_TYPE_2D;
+		case spv::Dim3D:	return VK_IMAGE_VIEW_TYPE_3D;
+		case spv::DimCube:	return VK_IMAGE_VIEW_TYPE_CUBE;
+		default:
+			log_error("Unrecognized dim");
+			assert(false);
+		}
+
+		return {};
 	}
 
 	static VkShaderStageFlagBits
@@ -222,27 +266,6 @@ namespace forge
 	{
 		VkResult res;
 
-		auto& shader_description = shader->description;
-
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-		for (uint32_t i = 0; i < FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS; ++i)
-		{
-			const ForgeUniformBlockDescription& uniform = shader_description.uniforms[i];
-
-			if (uniform.size > 0)
-			{
-				VkDescriptorSetLayoutBinding binding = {};
-				binding.binding = i;
-				binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-				binding.descriptorCount = 1;
-				binding.stageFlags = uniform.stages;
-				binding.pImmutableSamplers = nullptr;
-
-				bindings.push_back(binding);
-			}
-		}
-
 		VkPipelineLayoutCreateInfo pipeline_layout_info = {};
 		pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipeline_layout_info.setLayoutCount = 1;
@@ -256,7 +279,7 @@ namespace forge
 			return false;
 		}
 
-		_forge_debug_obj_name_set(forge, (uint64_t)shader->pipeline_layout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, shader_description.name.c_str());
+		_forge_debug_obj_name_set(forge, (uint64_t)shader->pipeline_layout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, shader->description.name.c_str());
 
 		return true;
 	}
@@ -265,7 +288,7 @@ namespace forge
 	_forge_shader_descriptor_set_layout_init(Forge* forge, ForgeShader* shader)
 	{
 		uint32_t count = 0;
-		VkDescriptorSetLayoutBinding bindings[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS] = {};
+		VkDescriptorSetLayoutBinding bindings[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS + FORGE_MAX_IMAGE_BINDINGS] = {};
 
 		for (uint32_t i = 0; i < FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS; ++i)
 		{
@@ -273,10 +296,24 @@ namespace forge
 			if (uniforms[i].name.empty() == true)
 				continue;
 
-			bindings[i].binding = i;
-			bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-			bindings[i].descriptorCount = 1u;
-			bindings[i].stageFlags = uniforms[i].stages;
+			bindings[count].binding = i;
+			bindings[count].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			bindings[count].descriptorCount = 1u;
+			bindings[count].stageFlags = uniforms[i].stages;
+
+			++count;
+		}
+
+		for (uint32_t i = 0; i < FORGE_MAX_IMAGE_BINDINGS; ++i)
+		{
+			auto images = shader->description.images;
+			if (images[i].name.empty() == true)
+				continue;
+
+			bindings[count].binding = i;
+			bindings[count].descriptorType = images[i].storage ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			bindings[count].descriptorCount = 1u;
+			bindings[count].stageFlags = images[i].stages;
 
 			++count;
 		}
@@ -300,6 +337,55 @@ namespace forge
 	}
 
 	static void
+	_forge_shader_images_init(Forge* forge, FORGE_SHADER_STAGE stage, ForgeShader* shader)
+	{
+		auto& module = shader->spirv[stage];
+		auto& shader_description = shader->description;
+		Compiler compiler({module.cbegin(), module.end()});
+
+		auto resources = compiler.get_shader_resources();
+		for (auto& spv_image : resources.sampled_images)
+		{
+			auto binding = compiler.get_decoration(spv_image.id, spv::DecorationBinding);
+			assert(binding < FORGE_MAX_IMAGE_BINDINGS);
+
+			auto& image = shader_description.images[binding];
+			if (image.name.empty() == false)
+			{
+				image.stages |= _forge_shader_stage_vk_stage(stage);
+				continue;
+			}
+
+			auto type = compiler.get_type(spv_image.type_id);
+			image.name = spv_image.name;
+			image.stages = _forge_shader_stage_vk_stage(stage);
+			image.format = _forge_spirv_image_format_vk_format(type.image.format);
+			image.type = _forge_spirv_image_dim_view_type(type.image.dim);
+			image.storage = false;
+		}
+
+		for (auto& spv_image : resources.storage_images)
+		{
+			auto binding = compiler.get_decoration(spv_image.id, spv::DecorationBinding);
+			assert(binding < FORGE_MAX_IMAGE_BINDINGS);
+
+			auto& image = shader_description.images[binding];
+			if (image.name.empty() == false)
+			{
+				image.stages |= _forge_shader_stage_vk_stage(stage);
+				continue;
+			}
+
+			auto type = compiler.get_type(spv_image.type_id);
+			image.name = spv_image.name;
+			image.stages = _forge_shader_stage_vk_stage(stage);
+			image.format = _forge_spirv_image_format_vk_format(type.image.format);
+			image.type = _forge_spirv_image_dim_view_type(type.image.dim);
+			image.storage = type.image.access == spv::AccessQualifierReadOnly ? false : true;
+		}
+	}
+
+	static void
 	_forge_shader_uniform_blocks_init(Forge* forge, FORGE_SHADER_STAGE stage, ForgeShader* shader)
 	{
 		auto& module = shader->spirv[stage];
@@ -313,7 +399,6 @@ namespace forge
 			assert(binding < FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS);
 
 			auto& uniform = shader_description.uniforms[binding];
-
 			if (uniform.name.empty() == false)
 			{
 				uniform.stages |= _forge_shader_stage_vk_stage(stage);
@@ -348,6 +433,9 @@ namespace forge
 
 		_forge_shader_uniform_blocks_init(forge, FORGE_SHADER_STAGE_VERTEX, shader);
 		_forge_shader_uniform_blocks_init(forge, FORGE_SHADER_STAGE_FRAGMENT, shader);
+
+		_forge_shader_images_init(forge, FORGE_SHADER_STAGE_VERTEX, shader);
+		_forge_shader_images_init(forge, FORGE_SHADER_STAGE_FRAGMENT, shader);
 
 		shader_description.name = name;
 

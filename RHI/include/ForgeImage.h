@@ -25,6 +25,7 @@ namespace forge
 		VkImage handle;
 		VkImageView shader_view;
 		VkImageView render_target_view;
+		VkImageViewType view_type;
 		VkSampler sampler;
 		ForgeImageDescription description;
 	};

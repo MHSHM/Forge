@@ -75,7 +75,37 @@ namespace forge
 	bool
 	forge_binding_list_image_bind(Forge* forge, ForgeBindingList* list, ForgeShader* shader, uint32_t binding, ForgeImage* image)
 	{
-		log_warning("Binding images is not implemented yet");
+		if (binding >= FORGE_MAX_IMAGE_BINDINGS)
+		{
+			log_error("The provided binding '{}' doesn't map to a valid binding in the shader '{}'", binding, shader->description.name);
+			return false;
+		}
+
+		auto& image_layout = shader->description.images[binding];
+		if (image_layout.type != image->view_type)
+		{
+			log_error("The provided image '{}' doesn't have an image view that matches the one defined in the shader", image->description.name, shader->description.name);
+			return false;
+		}
+
+		if (image_layout.storage == true)
+		{
+			if ((image->description.usage & VK_IMAGE_USAGE_STORAGE_BIT) == 0)
+			{
+				log_error("The privded image '{}' is not marked as a storage image while the shader '{}' expects a storage image", image->description.name, shader->description.name);
+				return false;
+			}
+		}
+		else
+		{
+			if ((image->description.usage & VK_IMAGE_USAGE_SAMPLED_BIT) == 0)
+			{
+				log_error("The provided image '{}' is not marked as a sampled image while the shader '{}' expects a sampled image", image->description.name, shader->description.name);
+				return false;
+			}
+		}
+
+		list->images[binding] = image;
 
 		return true;
 	}

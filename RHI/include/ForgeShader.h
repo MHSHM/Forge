@@ -16,6 +16,7 @@ namespace forge
 
 	static constexpr uint32_t FORGE_SHADER_MAX_INPUT_ATTRIBUTES = 16u;
 	static constexpr uint32_t FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS = 8u;
+	static constexpr uint32_t FORGE_SHADER_MAX_IMAGES = 16u;
 
 	enum FORGE_SHADER_STAGE
 	{
@@ -39,6 +40,15 @@ namespace forge
 		VkShaderStageFlags stages;
 	};
 
+	struct ForgeShaderImageDescription
+	{
+		std::string name;
+		VkShaderStageFlags stages;
+		VkFormat format;
+		VkImageViewType type;
+		bool storage;
+	};
+
 	struct ForgePipelineDescription
 	{
 		VkVertexInputBindingDescription bindings[FORGE_SHADER_MAX_INPUT_ATTRIBUTES];
@@ -58,6 +68,7 @@ namespace forge
 		std::string name;
 		ForgeInputAttributeDescription attributes[FORGE_SHADER_MAX_INPUT_ATTRIBUTES];
 		ForgeUniformBlockDescription uniforms[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
+		ForgeShaderImageDescription images[FORGE_SHADER_MAX_IMAGES];
 	};
 
 	struct ForgeShader
