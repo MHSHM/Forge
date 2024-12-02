@@ -71,6 +71,9 @@ namespace forge
 	_forge_descriptor_set_allocator_init(Forge* forge, ForgeShader* shader, ForgeDescriptorSetAllocator* allocator)
 	{
 		uint32_t uniforms_count = 0u;
+		uint32_t sampled_images_count = 0u;
+		uint32_t storage_images_count = 0u;
+
 		for (auto uniform : shader->description.uniforms)
 		{
 			if (uniform.name.empty() == false)
@@ -79,12 +82,34 @@ namespace forge
 			}
 		}
 
+		for (auto image : shader->description.images)
+		{
+			if (image.storage)
+			{
+				++storage_images_count;
+			}
+			else
+			{
+				++sampled_images_count;
+			}
+		}
+
 		std::vector<VkDescriptorPoolSize> pool_sizes;
+
 		if (uniforms_count > 0u)
 		{
 			pool_sizes.push_back({VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, uniforms_count * FORGE_DESCRIPTOR_SET_ALLOCATOR_MAX_SETS});
 		}
 
+		if (sampled_images_count > 0u)
+		{
+			pool_sizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, sampled_images_count * FORGE_DESCRIPTOR_SET_ALLOCATOR_MAX_SETS});
+		}
+
+		if (storage_images_count > 0u)
+		{
+			pool_sizes.push_back({VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, storage_images_count * FORGE_DESCRIPTOR_SET_ALLOCATOR_MAX_SETS});
+		}
 
 		VkDescriptorPoolCreateInfo info {};
 		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

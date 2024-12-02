@@ -45,48 +45,6 @@ namespace forge
 		return VK_FORMAT_R8G8B8A8_UNORM;
 	}
 
-	static VkFormat
-	_forge_spirv_image_format_vk_format(spv::ImageFormat format)
-	{
-		switch (format)
-		{
-		case spv::ImageFormatRgba32f:	return VK_FORMAT_R32G32B32A32_SFLOAT;
-		case spv::ImageFormatRgba16f:	return VK_FORMAT_R16G16B16A16_SFLOAT;
-		case spv::ImageFormatR32f:		return VK_FORMAT_R32_SFLOAT;
-		case spv::ImageFormatRgba8:		return VK_FORMAT_R8G8B8A8_UNORM;
-		case spv::ImageFormatRg32f:		return VK_FORMAT_R32G32_SFLOAT;
-		case spv::ImageFormatRg16f:		return VK_FORMAT_R16G16_SFLOAT;
-		case spv::ImageFormatR16f:		return VK_FORMAT_R16_SFLOAT;
-		case spv::ImageFormatRgba16:	return VK_FORMAT_R16G16B16A16_UNORM;
-		case spv::ImageFormatRg16:		return VK_FORMAT_R16G16_UNORM;
-		case spv::ImageFormatRg8:		return VK_FORMAT_R8G8_UNORM;
-		case spv::ImageFormatR16:		return VK_FORMAT_R16_UNORM;
-		case spv::ImageFormatR8:		return VK_FORMAT_R8_UNORM;
-		default:
-			log_error("Unrecognized format");
-			assert(false);
-		}
-
-		return {};
-	}
-
-	static VkImageViewType
-	_forge_spirv_image_dim_view_type(spv::Dim dim)
-	{
-		switch (dim)
-		{
-		case spv::Dim1D:	return VK_IMAGE_VIEW_TYPE_1D;
-		case spv::Dim2D:	return VK_IMAGE_VIEW_TYPE_2D;
-		case spv::Dim3D:	return VK_IMAGE_VIEW_TYPE_3D;
-		case spv::DimCube:	return VK_IMAGE_VIEW_TYPE_CUBE;
-		default:
-			log_error("Unrecognized dim");
-			assert(false);
-		}
-
-		return {};
-	}
-
 	static VkShaderStageFlagBits
 	_forge_shader_stage_vk_stage(FORGE_SHADER_STAGE stage)
 	{
@@ -359,8 +317,6 @@ namespace forge
 			auto type = compiler.get_type(spv_image.type_id);
 			image.name = spv_image.name;
 			image.stages = _forge_shader_stage_vk_stage(stage);
-			image.format = _forge_spirv_image_format_vk_format(type.image.format);
-			image.type = _forge_spirv_image_dim_view_type(type.image.dim);
 			image.storage = false;
 		}
 
@@ -379,9 +335,7 @@ namespace forge
 			auto type = compiler.get_type(spv_image.type_id);
 			image.name = spv_image.name;
 			image.stages = _forge_shader_stage_vk_stage(stage);
-			image.format = _forge_spirv_image_format_vk_format(type.image.format);
-			image.type = _forge_spirv_image_dim_view_type(type.image.dim);
-			image.storage = type.image.access == spv::AccessQualifierReadOnly ? false : true;
+			image.storage = compiler.get_decoration(spv_image.id, spv::DecorationNonWritable) ? false : true;
 		}
 	}
 

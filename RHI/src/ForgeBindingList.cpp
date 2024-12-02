@@ -82,17 +82,11 @@ namespace forge
 		}
 
 		auto& image_layout = shader->description.images[binding];
-		if (image_layout.type != image->view_type)
-		{
-			log_error("The provided image '{}' doesn't have an image view that matches the one defined in the shader", image->description.name, shader->description.name);
-			return false;
-		}
-
 		if (image_layout.storage == true)
 		{
 			if ((image->description.usage & VK_IMAGE_USAGE_STORAGE_BIT) == 0)
 			{
-				log_error("The privded image '{}' is not marked as a storage image while the shader '{}' expects a storage image", image->description.name, shader->description.name);
+				log_error("The provided image '{}' is not marked as a storage image while the shader '{}' expects a storage image", image->description.name, shader->description.name);
 				return false;
 			}
 		}

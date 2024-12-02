@@ -44,8 +44,6 @@ namespace forge
 	{
 		std::string name;
 		VkShaderStageFlags stages;
-		VkFormat format;
-		VkImageViewType type;
 		bool storage;
 	};
 
