@@ -7,15 +7,16 @@
 #include "ForgeDynamicMemory.h"
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
+#include "ForgeImage.h"
 
 namespace forge
 {
 	static bool
-	_forge_frame_init(Forge* forge, ForgeImage* color, ForgeImage* depth, ForgeFrame* frame)
+	_forge_frame_pass_init(Forge* forge, ForgeFrame* frame, ForgeImage* color, ForgeImage* depth)
 	{
 		ForgeAttachmentDescription color_attachment_desc {};
 		color_attachment_desc.image = color;
-		color_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		color_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR; // TODO: This should be provided by the user
 		color_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
 		color_attachment_desc.initial_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		color_attachment_desc.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -43,6 +44,12 @@ namespace forge
 			return false;
 		}
 
+		return true;
+	}
+
+	static bool
+	_forge_frame_common_init(Forge* forge, ForgeFrame* frame)
+	{
 		frame->deferred_queue = forge_deferred_queue_new(forge);
 
 		if (frame->deferred_queue == nullptr)
@@ -103,8 +110,62 @@ namespace forge
 	}
 
 	static bool
+	_forge_frame_init(Forge* forge, ForgeImage* color, ForgeImage* depth, ForgeFrame* frame)
+	{
+		if (_forge_frame_pass_init(forge, frame, color, depth) == false)
+		{
+			return false;
+		}
+
+		if (_forge_frame_common_init(forge, frame) == false)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	static bool
 	_forge_frame_init(Forge* forge, ForgeSwapchainDescription swapchain_desc, ForgeFrame* frame)
 	{
+		frame->swapchain = forge_swapchain_new(forge, swapchain_desc);
+
+		if (frame->swapchain == nullptr)
+		{
+			log_error("Failed to initialize frame's swapchain");
+			return false;
+		}
+
+		ForgeImageDescription color_desc {};
+		color_desc.name = "Frame Color";
+		color_desc.extent = {swapchain_desc.extent.width, swapchain_desc.extent.height, 1};
+		color_desc.type = VK_IMAGE_TYPE_2D;
+		color_desc.format = VK_FORMAT_R8G8B8A8_UNORM;
+		color_desc.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		color_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		color_desc.create_flags = 0u;
+		auto color = forge_image_new(forge, color_desc);
+
+		ForgeImageDescription depth_desc {};
+		depth_desc.name = "Frame Depth";
+		depth_desc.extent = { swapchain_desc.extent.width, swapchain_desc.extent.height, 1 };
+		depth_desc.type = VK_IMAGE_TYPE_2D;
+		depth_desc.format = VK_FORMAT_D32_SFLOAT;
+		depth_desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depth_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		depth_desc.create_flags = 0u;
+		auto depth = forge_image_new(forge, depth_desc);
+
+		if (_forge_frame_pass_init(forge, frame, color, depth) == false)
+		{
+			return false;
+		}
+
+		if (_forge_frame_common_init(forge, frame) == false)
+		{
+			return false;
+		}
+
 		return true;
 	}
 
@@ -113,12 +174,17 @@ namespace forge
 	{
 		if (frame->swapchain)
 		{
-		
+			forge_image_destroy(forge, frame->pass->description.colors[0].image);
+			forge_image_destroy(forge, frame->pass->description.depth.image);
+			forge_swapchain_destroy(forge, frame->swapchain);
 		}
-		else
-		{
-			
-		}
+
+		vkDestroyCommandPool(forge->device, frame->command_pool, nullptr);
+		vkDestroySemaphore(forge->device, frame->rendering_done, nullptr);
+		forge_dynamic_memory_destroy(forge, frame->uniform_memory);
+		forge_descriptor_set_manager_destroy(forge, frame->descriptor_set_manager);
+		forge_deferred_queue_destroy(forge, frame->deferred_queue);
+		forge_render_pass_destroy(forge, frame->pass);
 	}
 
 	ForgeFrame*
@@ -138,7 +204,15 @@ namespace forge
 	ForgeFrame*
 	forge_frame_new(Forge* forge, ForgeSwapchainDescription swapchain_desc)
 	{
-		return nullptr;
+		auto frame = new ForgeFrame();
+
+		if (_forge_frame_init(forge, swapchain_desc, frame) == false)
+		{
+			forge_frame_destroy(forge, frame);
+			return nullptr;
+		}
+
+		return frame;
 	}
 
 	bool

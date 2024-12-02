@@ -66,7 +66,8 @@ int main()
 	desc.images_count = 2u;
 	desc.present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
 	desc.window = hwnd;
-	auto swapchain = forge::forge_swapchain_new(forge, desc);
+	auto swapchain_frame = forge::forge_frame_new(forge, desc);
+	forge::forge_frame_destroy(forge, swapchain_frame);
 
 	forge::ForgeImageDescription color_desc {};
 	color_desc.name = "Color";
@@ -92,12 +93,9 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		forge::forge_swapchain_update(forge, swapchain);
-
 		glfwPollEvents();
 	}
 
-	forge_swapchain_destroy(forge, swapchain);
 	forge_destroy(forge);
 
 	return 0;
