@@ -78,7 +78,6 @@ namespace forge
 
 		VkDeviceSize offset = _forge_align_up(current * memory->segment_size, alignment);
 		offset += memory->cursor[current];
-
 		memory->cursor[current] += size;
 
 		void* dst = (char*)memory->buffer->mapped_ptr + offset;
