@@ -17,7 +17,6 @@ namespace forge
 			uint64_t signal;
 		};
 
-		VkSemaphore semaphore;
 		std::vector<Entry> entries;
 	};
 
@@ -28,7 +27,7 @@ namespace forge
 	forge_deferred_queue_push(Forge* forge, ForgeDeferredQueue* queue, const std::function<void()>& task, uint64_t signal);
 
 	void
-	forge_deferred_queue_flush(Forge* forge, ForgeDeferredQueue* queue, bool immediate);
+	forge_deferred_queue_flush(Forge* forge, ForgeDeferredQueue* queue, VkSemaphore semaphore, bool immediate);
 
 	void
 	forge_deferred_queue_destroy(Forge* forge, ForgeDeferredQueue* queue);

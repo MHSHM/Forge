@@ -14,6 +14,8 @@ namespace forge
 	struct ForgeDynamicMemory;
 	struct ForgeDeferredQueue;
 
+	static constexpr uint32_t FORGE_FRAME_MAX_UNIFORM_MEMORY = 16 << 20;
+
 	struct ForgeFrame
 	{
 		ForgeSwapchain* swapchain;
@@ -23,6 +25,7 @@ namespace forge
 		ForgeDynamicMemory* uniform_memory;
 		VkSemaphore rendering_done;
 		VkCommandPool command_pool;
+		uint32_t frame_index;
 	};
 
 	ForgeFrame*
