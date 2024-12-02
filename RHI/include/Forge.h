@@ -16,6 +16,7 @@
 namespace forge
 {
 	struct ForgeBuffer;
+	struct ForgeDynamicMemory;
 
 	struct Forge
 	{
@@ -34,6 +35,8 @@ namespace forge
 
 		ForgeBuffer* staging_buffer;
 		VkCommandBuffer staging_command_buffer;
+
+		ForgeDynamicMemory* uniform_memory;
 
 		VkDebugUtilsMessengerEXT debug_messenger;
 		PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT;

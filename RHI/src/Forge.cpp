@@ -7,6 +7,7 @@
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeBuffer.h"
+#include "ForgeDynamicMemory.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -15,6 +16,7 @@
 namespace forge
 {
 	static constexpr uint32_t STAGING_BUFFER_SIZE = 32 << 20;
+	static constexpr uint32_t UNIFORM_MEMORY_SIZE = 16 << 20;
 
 	static bool
 	_forge_instance_init(Forge* forge)
@@ -353,7 +355,7 @@ namespace forge
 			return false;
 		}
 
-		log_info("Global staging buffer was creating successfully");
+		log_info("A '{}' bytes of global staging memory was created successfully", STAGING_BUFFER_SIZE);
 
 		VkCommandBufferAllocateInfo info {};
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -372,35 +374,63 @@ namespace forge
 	}
 
 	static bool
+	_forge_uniform_dynamic_memory_init(Forge* forge)
+	{
+		forge->uniform_memory = forge_dynamic_memory_new(forge, UNIFORM_MEMORY_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+		if (forge->uniform_memory == nullptr)
+		{
+			log_error("Failed to initialize uniform global dynamic memory");
+			return false;
+		}
+
+		log_info("A '{}' bytes of global dynamic uniform memory was created successfully", UNIFORM_MEMORY_SIZE);
+
+		return true;
+	}
+
+	static bool
 	_forge_init(Forge* forge)
 	{
 		if (_forge_instance_init(forge) == false)
 		{
+			forge_destroy(forge);
 			return false;
 		}
 
 		if (_forge_physical_device_init(forge) == false)
 		{
+			forge_destroy(forge);
 			return false;
 		}
 
 		if (_forge_logical_device_init(forge) == false)
 		{
+			forge_destroy(forge);
 			return false;
 		}
 
 		if (_forge_debug_messenger_init(forge) == false)
 		{
+			forge_destroy(forge);
 			return false;
 		}
 
 		if (_forge_command_pool_init(forge) == false)
 		{
+			forge_destroy(forge);
 			return false;
 		}
 
 		if (_forge_staging_buffer_init(forge) == false)
 		{
+			forge_destroy(forge);
+			return false;
+		}
+
+		if (_forge_uniform_dynamic_memory_init(forge) == false)
+		{
+			forge_destroy(forge);
 			return false;
 		}
 
@@ -413,6 +443,21 @@ namespace forge
 		if (forge->debug_messenger)
 		{
 			forge->pfn_vkDestroyDebugUtilsMessengerEXT(forge->instance, forge->debug_messenger, nullptr);
+		}
+
+		if (forge->staging_buffer)
+		{
+			forge_buffer_destroy(forge, forge->staging_buffer);
+		}
+
+		if (forge->command_pool)
+		{
+			vkDestroyCommandPool(forge->device, forge->command_pool, nullptr);
+		}
+
+		if (forge->uniform_memory)
+		{
+			forge_dynamic_memory_destroy(forge, forge->uniform_memory);
 		}
 
 		if (forge->device)

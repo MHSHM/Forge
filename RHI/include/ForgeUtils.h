@@ -13,8 +13,21 @@
 
 namespace forge
 {
+	static uint64_t
+	_forge_align_up(uint64_t value, uint64_t alignment)
+	{
+		return (value + alignment - 1) & ~(alignment - 1);
+	}
+
+	static uint64_t
+	_forge_align_down(uint64_t value, uint64_t alignment)
+	{
+		return (value) & ~(alignment - 1);
+	}
+
 	template <class T>
-	inline void _forge_hash_combine(uint64_t& seed, const T& v)
+	static void
+	_forge_hash_combine(uint64_t& seed, const T& v)
 	{
 		std::hash<T> hasher;
 		seed ^= hasher(v) + 0x9e3779b9u + (seed << 6u) + (seed >> 2u);

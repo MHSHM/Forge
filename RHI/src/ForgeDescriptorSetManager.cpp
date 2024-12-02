@@ -5,6 +5,8 @@
 #include "ForgeLogger.h"
 #include "ForgeBindingList.h"
 #include "ForgeUtils.h"
+#include "ForgeDynamicMemory.h"
+#include "ForgeBuffer.h"
 
 namespace forge
 {
@@ -24,7 +26,7 @@ namespace forge
 				continue;
 
 			auto& buffer_write_info = MAX_BUFFERS[buffers_count];
-			buffer_write_info.buffer = VK_NULL_HANDLE; // TODO: ForgeDynamicMemory
+			buffer_write_info.buffer = forge->uniform_memory->buffer->handle;
 			buffer_write_info.offset = 0u;
 			buffer_write_info.range  = uniforms[i].size;
 
