@@ -14,16 +14,18 @@ namespace forge
 	static bool
 	_forge_frame_pass_init(Forge* forge, ForgeFrame* frame, ForgeImage* color, ForgeImage* depth)
 	{
+		auto color_final_layout = frame->swapchain ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
 		ForgeAttachmentDescription color_attachment_desc {};
 		color_attachment_desc.image = color;
 		color_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR; // TODO: This should be provided by the user
 		color_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
 		color_attachment_desc.initial_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		color_attachment_desc.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		color_attachment_desc.clear_action.color[0] = 0.0f;
+		color_attachment_desc.final_layout = color_final_layout;
+		color_attachment_desc.clear_action.color[0] = 1.0f;
 		color_attachment_desc.clear_action.color[1] = 0.0f;
-		color_attachment_desc.clear_action.color[2] = 0.0f;
-		color_attachment_desc.clear_action.color[3] = 0.0f;
+		color_attachment_desc.clear_action.color[2] = 1.0f;
+		color_attachment_desc.clear_action.color[3] = 1.0f;
 
 		ForgeAttachmentDescription depth_attachment_desc {};
 		depth_attachment_desc.image = depth;
@@ -83,7 +85,7 @@ namespace forge
 		rendering_done_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 		rendering_done_info.pNext = &timeline_info;
 		rendering_done_info.flags = 0;
-		auto res = vkCreateSemaphore(forge->device, &rendering_done_info, NULL, &frame->rendering_done);
+		auto res = vkCreateSemaphore(forge->device, &rendering_done_info, NULL, &frame->frame_finished);
 		VK_RES_CHECK(res);
 
 		if (res != VK_SUCCESS)
@@ -104,7 +106,7 @@ namespace forge
 			return false;
 		}
 
-		frame->frame_index = 0u;
+		frame->current_frame = 0u;
 
 		return true;
 	}
@@ -141,7 +143,7 @@ namespace forge
 		color_desc.extent = {swapchain_desc.extent.width, swapchain_desc.extent.height, 1};
 		color_desc.type = VK_IMAGE_TYPE_2D;
 		color_desc.format = VK_FORMAT_R8G8B8A8_UNORM;
-		color_desc.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		color_desc.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		color_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		color_desc.create_flags = 0u;
 		auto color = forge_image_new(forge, color_desc);
@@ -151,7 +153,7 @@ namespace forge
 		depth_desc.extent = { swapchain_desc.extent.width, swapchain_desc.extent.height, 1 };
 		depth_desc.type = VK_IMAGE_TYPE_2D;
 		depth_desc.format = VK_FORMAT_D32_SFLOAT;
-		depth_desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depth_desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		depth_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		depth_desc.create_flags = 0u;
 		auto depth = forge_image_new(forge, depth_desc);
@@ -180,11 +182,129 @@ namespace forge
 		}
 
 		vkDestroyCommandPool(forge->device, frame->command_pool, nullptr);
-		vkDestroySemaphore(forge->device, frame->rendering_done, nullptr);
+		vkDestroySemaphore(forge->device, frame->frame_finished, nullptr);
 		forge_dynamic_memory_destroy(forge, frame->uniform_memory);
 		forge_descriptor_set_manager_destroy(forge, frame->descriptor_set_manager);
 		forge_deferred_queue_destroy(forge, frame->deferred_queue);
 		forge_render_pass_destroy(forge, frame->pass);
+	}
+
+	static void
+	_forge_swapchain_frame_begin(Forge* forge, ForgeFrame* frame)
+	{
+		forge_swapchain_update(forge, frame->swapchain);
+		forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
+	}
+
+	static void
+	_forge_offscreen_frame_begin(Forge* forge, ForgeFrame* frame)
+	{
+		forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
+	}
+
+	static void
+	_forge_swapchain_frame_end(Forge* forge, ForgeFrame* frame)
+	{
+		VkResult res;
+
+		auto command_buffer = frame->command_buffer;
+		auto image_available = frame->swapchain->image_available[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+		auto rendering_done = frame->swapchain->rendering_done[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+
+		forge_render_pass_end(forge, command_buffer, frame->pass);
+
+		uint32_t image_index;
+		res = vkAcquireNextImageKHR(forge->device, frame->swapchain->handle, UINT64_MAX, image_available, VK_NULL_HANDLE, &image_index);
+		VK_RES_CHECK(res);
+
+		auto dst_image = frame->swapchain->images[image_index];
+		auto src_image = frame->pass->description.colors[0].image->handle;
+		auto extent = frame->swapchain->description.extent;
+
+		VkImageMemoryBarrier barrier {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.srcAccessMask = VK_ACCESS_NONE;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.image = dst_image;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0u;
+		barrier.subresourceRange.levelCount = 1u;
+		barrier.subresourceRange.baseArrayLayer = 0u;
+		barrier.subresourceRange.layerCount = 1u;
+		vkCmdPipelineBarrier(
+			command_buffer,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0u,
+			0u, nullptr,
+			0u, nullptr,
+			1u, &barrier
+		);
+
+		VkImageBlit image_blit {};
+		image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		image_blit.srcSubresource.baseArrayLayer = 0u;
+		image_blit.srcSubresource.layerCount = 1u;
+		image_blit.srcSubresource.mipLevel = 0u;
+		image_blit.srcOffsets[0] = {0,0,0};
+		image_blit.srcOffsets[1] = {(int32_t)extent.width, (int32_t)extent.height, 0};
+		image_blit.dstSubresource = image_blit.srcSubresource;
+		image_blit.dstOffsets[0] = image_blit.srcOffsets[0];
+		image_blit.dstOffsets[1] = image_blit.srcOffsets[1];
+		vkCmdBlitImage(command_buffer, src_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &image_blit, VK_FILTER_NEAREST);
+
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_NONE;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		barrier.image = dst_image;
+		vkCmdPipelineBarrier(
+			command_buffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+			0u,
+			0u, nullptr,
+			0u, nullptr,
+			1u, &barrier
+		);
+
+		vkEndCommandBuffer(command_buffer);
+
+		uint64_t values[] = {frame->current_frame + 1, UINT64_MAX};
+		VkSemaphore signal_semaphores[] = {frame->frame_finished, rendering_done};
+
+		VkTimelineSemaphoreSubmitInfo timeline_info {};
+		timeline_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+		timeline_info.signalSemaphoreValueCount = 2u;
+		timeline_info.pSignalSemaphoreValues = values;
+
+		VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+		VkSubmitInfo submit_info {};
+		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit_info.pNext = &timeline_info;
+		submit_info.waitSemaphoreCount = 1u;
+		submit_info.pWaitSemaphores = &image_available;
+		submit_info.pWaitDstStageMask = &wait_stage; // Is this the correct stage to wait on?
+		submit_info.commandBufferCount = 1u;
+		submit_info.pCommandBuffers = &command_buffer;
+		submit_info.signalSemaphoreCount = 2u;
+		submit_info.pSignalSemaphores = signal_semaphores;
+		res = vkQueueSubmit(forge->queue, 1u, &submit_info, VK_NULL_HANDLE);
+		VK_RES_CHECK(res);
+
+		VkPresentInfoKHR present_info {};
+		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.waitSemaphoreCount = 1u;
+		present_info.pWaitSemaphores = &rendering_done;
+		present_info.swapchainCount = 1u;
+		present_info.pSwapchains = &frame->swapchain->handle;
+		present_info.pImageIndices = &image_index;
+		res = vkQueuePresentKHR(forge->queue, &present_info);
+		VK_RES_CHECK(res);
+
 	}
 
 	ForgeFrame*
@@ -218,13 +338,48 @@ namespace forge
 	bool
 	forge_frame_begin(Forge* forge, ForgeFrame* frame)
 	{
+		VkResult res;
+
+		// TODO: Add command buffer manager similar to descriptor set manager
+		VkCommandBufferAllocateInfo command_info {};
+		command_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		command_info.commandBufferCount = 1u;
+		command_info.commandPool = frame->command_pool;
+		command_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		res = vkAllocateCommandBuffers(forge->device, &command_info, &frame->command_buffer);
+		VK_RES_CHECK(res);
+
+		VkCommandBufferBeginInfo begin_info {};
+		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		res = vkBeginCommandBuffer(frame->command_buffer, &begin_info);
+		VK_RES_CHECK(res);
+
+		if (frame->swapchain)
+		{
+			_forge_swapchain_frame_begin(forge, frame);
+		}
+		else
+		{
+			_forge_offscreen_frame_begin(forge, frame);
+		}
+
 		return true;
 	}
 
 	void
 	forge_frame_end(Forge* forge, ForgeFrame* frame)
 	{
-	
+		if (frame->swapchain)
+		{
+			_forge_swapchain_frame_end(forge, frame);
+		}
+		else
+		{
+			
+		}
+
+		frame->current_frame++;
 	}
 
 	void

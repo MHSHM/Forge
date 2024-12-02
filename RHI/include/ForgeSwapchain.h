@@ -8,6 +8,8 @@ namespace forge
 { 
 	struct Forge;
 
+	static constexpr uint32_t FORGE_SWAPCHIAN_INFLIGH_FRAMES = 2u;
+
 	struct ForgeSwapchainDescription
 	{
 		void* window;
@@ -23,6 +25,8 @@ namespace forge
 		VkSurfaceKHR surface;
 		VkColorSpaceKHR color_space;
 		std::vector<VkImage> images;
+		VkSemaphore image_available[FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+		VkSemaphore rendering_done[FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		ForgeSwapchainDescription description;
 	};
 

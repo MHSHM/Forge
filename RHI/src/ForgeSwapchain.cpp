@@ -138,6 +138,29 @@ namespace forge
 			return false;
 		}
 
+		for (uint32_t i = 0; i < FORGE_SWAPCHIAN_INFLIGH_FRAMES; ++i)
+		{
+			VkSemaphoreCreateInfo semaphore_info {};
+			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+			res = vkCreateSemaphore(forge->device, &semaphore_info, nullptr, &swapchain->image_available[i]);
+			VK_RES_CHECK(res);
+
+			if (res != VK_SUCCESS)
+			{
+				log_error("Failed to create the image available semaphore");
+				return false;
+			}
+
+			res = vkCreateSemaphore(forge->device, &semaphore_info, nullptr, &swapchain->rendering_done[i]);
+			VK_RES_CHECK(res);
+
+			if (res != VK_SUCCESS)
+			{
+				log_error("Failed to create the rendering done semaphore");
+				return false;
+			}
+		}
+
 		log_info("Swapchain was created successfully");
 
 		return true;

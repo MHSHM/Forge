@@ -241,8 +241,8 @@ namespace forge
 		barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		barrier.subresourceRange.baseArrayLayer = 0u;
-		barrier.subresourceRange.baseMipLevel = 0u;
 		barrier.subresourceRange.layerCount = 1u;
+		barrier.subresourceRange.baseMipLevel = 0u;
 		barrier.subresourceRange.levelCount = 1u;
 
 		// Transition to the expected initial layout
@@ -281,8 +281,8 @@ namespace forge
 			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 			vkCmdPipelineBarrier(
 				command_buffer,
-				VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
 				0u,
 				0u, nullptr,
 				0u, nullptr,

@@ -67,32 +67,12 @@ int main()
 	desc.present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
 	desc.window = hwnd;
 	auto swapchain_frame = forge::forge_frame_new(forge, desc);
-	forge::forge_frame_destroy(forge, swapchain_frame);
-
-	forge::ForgeImageDescription color_desc {};
-	color_desc.name = "Color";
-	color_desc.extent = {800, 600, 1};
-	color_desc.type = VK_IMAGE_TYPE_2D;
-	color_desc.format = VK_FORMAT_R8G8B8A8_UNORM;
-	color_desc.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	color_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	color_desc.create_flags = 0u;
-	auto color = forge::forge_image_new(forge, color_desc);
-
-	forge::ForgeImageDescription depth_desc {};
-	depth_desc.name = "Depth";
-	depth_desc.extent = {800, 600, 1};
-	depth_desc.type = VK_IMAGE_TYPE_2D;
-	depth_desc.format = VK_FORMAT_D32_SFLOAT;
-	depth_desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	depth_desc.memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	depth_desc.create_flags = 0u;
-	auto depth = forge::forge_image_new(forge, depth_desc);
-
-	auto frame = forge::forge_frame_new(forge, color, depth);
 
 	while (!glfwWindowShouldClose(window))
 	{
+		forge::forge_frame_begin(forge, swapchain_frame);
+		forge::forge_frame_end(forge, swapchain_frame);
+
 		glfwPollEvents();
 	}
 

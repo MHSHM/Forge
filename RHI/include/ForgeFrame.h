@@ -23,9 +23,10 @@ namespace forge
 		ForgeDeferredQueue* deferred_queue;
 		ForgeDescriptorSetManager* descriptor_set_manager;
 		ForgeDynamicMemory* uniform_memory;
-		VkSemaphore rendering_done;
+		VkSemaphore frame_finished;
 		VkCommandPool command_pool;
-		uint32_t frame_index;
+		VkCommandBuffer command_buffer;
+		uint32_t current_frame;
 	};
 
 	ForgeFrame*
