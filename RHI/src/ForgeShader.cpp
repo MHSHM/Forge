@@ -335,7 +335,7 @@ namespace forge
 			auto type = compiler.get_type(spv_image.type_id);
 			image.name = spv_image.name;
 			image.stages = _forge_shader_stage_vk_stage(stage);
-			image.storage = compiler.get_decoration(spv_image.id, spv::DecorationNonWritable) ? false : true;
+			image.storage = true;
 		}
 	}
 

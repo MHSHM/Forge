@@ -7,6 +7,7 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(set = 0, binding = 1) uniform sampler2D base_color_texture;
+
 layout (set = 0, binding = 2, rgba8) uniform readonly image2D inputImage;
 layout (set = 0, binding = 3, rgba8) uniform image2D resultImage;
 layout (set = 0, binding = 4, rgba8) uniform writeonly image2D resultImage2;
