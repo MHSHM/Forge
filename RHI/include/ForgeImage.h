@@ -17,7 +17,13 @@ namespace forge
 		VkImageUsageFlags usage;
 		VkMemoryPropertyFlags memory_properties;
 		VkImageCreateFlags create_flags;
-		bool mipmaps;
+		VkFilter mag_filter = VK_FILTER_LINEAR;
+		VkFilter min_filter = VK_FILTER_LINEAR;
+		VkSamplerMipmapMode mipmap_mode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		VkSamplerAddressMode address_mode_u = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		VkSamplerAddressMode address_mode_v = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		VkSamplerAddressMode address_mode_w = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		bool mipmaps = false;
 	};
 
 	struct ForgeImage

@@ -11,7 +11,7 @@ namespace forge
 	static void
 	_forge_descriptor_set_update(Forge* forge, VkDescriptorSet set, ForgeShader* shader, ForgeBindingList* binding_list)
 	{
-		VkWriteDescriptorSet MAX_WRITES[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS + FORGE_MAX_IMAGE_BINDINGS];
+		VkWriteDescriptorSet MAX_WRITES[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS + FORGE_MAX_IMAGE_BINDINGS] = {};
 		VkDescriptorBufferInfo MAX_BUFFERS[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS] = {};
 		VkDescriptorImageInfo MAX_IMAGES[FORGE_MAX_IMAGE_BINDINGS] = {};
 		uint32_t buffers_count = 0u;

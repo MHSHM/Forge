@@ -89,17 +89,46 @@ namespace forge
 		res = vkCreateImageView(forge->device, &view_info, nullptr, &image->shader_view);
 		VK_RES_CHECK(res);
 
-		// render target view
-		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		view_info.subresourceRange.levelCount = 1u;
-		view_info.subresourceRange.layerCount = 1u;
-		res = vkCreateImageView(forge->device, &view_info, nullptr, &image->render_target_view);
-		VK_RES_CHECK(res);
+		if ((image->description.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) || (image->description.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+		{
+			// render target view
+			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			view_info.subresourceRange.levelCount = 1u;
+			view_info.subresourceRange.layerCount = 1u;
+			res = vkCreateImageView(forge->device, &view_info, nullptr, &image->render_target_view);
+			VK_RES_CHECK(res);
+		}
 
 		if (res != VK_SUCCESS)
 		{
 			log_error("Failed to create image view for '{}'", image->description.name);
 			return false;
+		}
+
+		if ((image->description.usage & VK_IMAGE_USAGE_STORAGE_BIT) == 0)
+		{
+			VkSamplerCreateInfo sampler_info{};
+			sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			sampler_info.magFilter = image->description.mag_filter;
+			sampler_info.minFilter = image->description.min_filter;
+			sampler_info.mipmapMode = image->description.mipmap_mode;
+			sampler_info.addressModeU = image->description.address_mode_u;
+			sampler_info.addressModeV = image->description.address_mode_v;
+			sampler_info.addressModeW = image->description.address_mode_w;
+			sampler_info.mipLodBias = 0.0f;
+			sampler_info.anisotropyEnable = VK_FALSE;
+			sampler_info.compareEnable = VK_FALSE;
+			sampler_info.minLod = 0.0f;
+			sampler_info.maxLod = VK_LOD_CLAMP_NONE;
+			sampler_info.unnormalizedCoordinates = VK_FALSE;
+			res = vkCreateSampler(forge->device, &sampler_info, nullptr, &image->sampler);
+			VK_RES_CHECK(res);
+
+			if (res != VK_SUCCESS)
+			{
+				log_error("Failed to create the sampler for '{}'", image->description.name);
+				return false;
+			}
 		}
 
 		if (image->description.name.empty() == false)
