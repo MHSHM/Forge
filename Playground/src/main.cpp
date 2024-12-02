@@ -94,6 +94,17 @@ int main()
     image_desc.mipmaps = true;
     auto color_0 = forge::forge_image_new(forge, image_desc);
 
+    image_desc.name = "Storage 0";
+    image_desc.type = VK_IMAGE_TYPE_2D;
+    image_desc.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+    auto storage_0 = forge::forge_image_new(forge, image_desc);
+
+    image_desc.name = "Storage 1";
+    auto storage_1 = forge::forge_image_new(forge, image_desc);
+
+    image_desc.name = "Storage 2";
+    auto storage_2 = forge::forge_image_new(forge, image_desc);
+
     forge::ForgeRenderPassDescription render_pass_desc {};
     render_pass_desc.colors[0].image = color_0;
     render_pass_desc.colors[0].initial_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -129,6 +140,10 @@ int main()
 
     forge::ForgeBindingList list {};
     forge::forge_binding_list_vertex_buffer_bind(forge, &list, shader, 0u, buffer);
+    forge::forge_binding_list_image_bind(forge, &list, shader, 1u, color_0);
+    forge::forge_binding_list_image_bind(forge, &list, shader, 2u, storage_0);
+    forge::forge_binding_list_image_bind(forge, &list, shader, 3u, storage_1);
+    forge::forge_binding_list_image_bind(forge, &list, shader, 4u, storage_2);
 
     auto set_manager = forge::forge_descriptor_set_manager_new(forge);
     auto set = forge::forge_descriptor_set_manager_set_get(forge, set_manager, shader, &list);

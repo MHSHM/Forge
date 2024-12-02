@@ -76,14 +76,17 @@ namespace forge
 
 		for (auto uniform : shader->description.uniforms)
 		{
-			if (uniform.name.empty() == false)
-			{
-				++uniforms_count;
-			}
+			if (uniform.name.empty() == true)
+				continue;
+
+			++uniforms_count;
 		}
 
 		for (auto image : shader->description.images)
 		{
+			if (image.name.empty() == true)
+				continue;
+
 			if (image.storage)
 			{
 				++storage_images_count;
@@ -142,7 +145,6 @@ namespace forge
 
 			_forge_hash_combine(hash, image);
 			_forge_hash_combine(hash, image->handle);
-			_forge_hash_combine(hash, image->description.name);
 		}
 
 		if (auto iter = allocator->recently_used.find(hash); iter != allocator->recently_used.end())
