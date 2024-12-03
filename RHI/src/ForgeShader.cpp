@@ -3,6 +3,7 @@
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeBindingList.h"
+#include "ForgeDeletionQueue.h"
 
 #include <vector>
 #include <assert.h>
@@ -471,27 +472,27 @@ namespace forge
 	{
 		if (shader->modules[FORGE_SHADER_STAGE_FRAGMENT])
 		{
-			vkDestroyShaderModule(forge->device, shader->modules[FORGE_SHADER_STAGE_FRAGMENT], nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->modules[FORGE_SHADER_STAGE_FRAGMENT]);
 		}
 
 		if (shader->modules[FORGE_SHADER_STAGE_VERTEX])
 		{
-			vkDestroyShaderModule(forge->device, shader->modules[FORGE_SHADER_STAGE_VERTEX], nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->modules[FORGE_SHADER_STAGE_VERTEX]);
 		}
 
 		if (shader->descriptor_set_layout)
 		{
-			vkDestroyDescriptorSetLayout(forge->device, shader->descriptor_set_layout, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->descriptor_set_layout);
 		}
 
 		if (shader->pipeline_layout)
 		{
-			vkDestroyPipelineLayout(forge->device, shader->pipeline_layout, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->pipeline_layout);
 		}
 
 		if (shader->pipeline)
 		{
-			vkDestroyPipeline(forge->device, shader->pipeline, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->pipeline);
 		}
 	}
 

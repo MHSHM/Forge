@@ -2,7 +2,7 @@
 #include "ForgeFrame.h"
 #include "ForgeSwapchain.h"
 #include "ForgeRenderPass.h"
-#include "ForgeDeferedQueue.h"
+#include "ForgeDeletionQueue.h"
 #include "ForgeDescriptorSetManager.h"
 #include "ForgeDynamicMemory.h"
 #include "ForgeLogger.h"
@@ -49,12 +49,19 @@ namespace forge
 		return true;
 	}
 
-	static bool
-	_forge_swapchain_frame_pass_init(Forge* forge, ForgeFrame* frame)
+	static void
+	_forge_swapchain_frame_pass_update(Forge* forge, ForgeFrame* frame)
 	{
+		auto swapchain = frame->swapchain;
 		auto swapchain_desc = frame->swapchain->description;
+		auto pass = frame->pass;
 
-		ForgeImageDescription color_desc {};
+		if (pass && pass->width == swapchain->description.extent.width && pass->height == swapchain->description.extent.height)
+		{
+			return;
+		}
+
+		ForgeImageDescription color_desc{};
 		color_desc.name = "Frame Color";
 		color_desc.extent = {swapchain_desc.extent.width, swapchain_desc.extent.height, 1};
 		color_desc.type = VK_IMAGE_TYPE_2D;
@@ -74,31 +81,23 @@ namespace forge
 		depth_desc.create_flags = 0u;
 		auto depth = forge_image_new(forge, depth_desc);
 
-		_forge_frame_pass_init(forge, frame, color, depth);
-
-		return true;
-	}
-
-	static void
-	_forge_swapchain_frame_pass_update(Forge* forge, ForgeFrame* frame)
-	{
-		auto swapchain = frame->swapchain;
-		auto pass = frame->pass;
-
-		if (pass->width == swapchain->description.extent.width && pass->height == swapchain->description.extent.height)
+		if (pass)
 		{
-			return;
+			auto old_color = pass->description.colors[0].image;
+			auto old_depth = pass->description.depth.image;
+
+			forge_image_destroy(forge, old_color);
+			forge_image_destroy(forge, old_depth);
+
+			auto desc = pass->description;
+			desc.colors[0].image = color;
+			desc.depth.image = depth;
+			forge_render_pass_update(forge, desc, pass);
 		}
-
-		auto color = pass->description.colors[0].image;
-		auto depth = pass->description.depth.image;
-
-		forge_deferred_queue_push(forge, frame->deferred_queue, [forge, color, depth]() {
-			forge_image_destroy(forge, color);
-			forge_image_destroy(forge, depth);
-		}, frame->current_frame + 1u);
-
-		_forge_swapchain_frame_pass_init(forge, frame);
+		else
+		{
+			_forge_frame_pass_init(forge, frame, color, depth);
+		}
 	}
 
 	static bool
@@ -110,52 +109,10 @@ namespace forge
 	static bool
 	_forge_frame_common_init(Forge* forge, ForgeFrame* frame)
 	{
-		frame->deferred_queue = forge_deferred_queue_new(forge);
-
-		if (frame->deferred_queue == nullptr)
-		{
-			log_error("Failed to initialize frame's deferred queue");
-			return false;
-		}
-
-		frame->descriptor_set_manager = forge_descriptor_set_manager_new(forge);
-
-		if (frame->descriptor_set_manager == nullptr)
-		{
-			log_error("Failed to initialize frame's descriptor set manager");
-			return false;
-		}
-
-		frame->uniform_memory = forge_dynamic_memory_new(forge, FORGE_FRAME_MAX_UNIFORM_MEMORY, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-		if (frame->uniform_memory == nullptr)
-		{
-			log_error("Failed to initialize frame's uniform dynamic memory");
-			return false;
-		}
-
-		VkSemaphoreTypeCreateInfo timeline_info {};
-		timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-		timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-		timeline_info.initialValue = 0;
-
-		VkSemaphoreCreateInfo rendering_done_info{};
-		rendering_done_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		rendering_done_info.pNext = &timeline_info;
-		rendering_done_info.flags = 0;
-		auto res = vkCreateSemaphore(forge->device, &rendering_done_info, NULL, &frame->frame_finished);
-		VK_RES_CHECK(res);
-
-		if (res != VK_SUCCESS)
-		{
-			log_error("Failed to initialize frame's rendering done semaphore");
-			return false;
-		}
-
 		VkCommandPoolCreateInfo command_pool_info {};
 		command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		command_pool_info.queueFamilyIndex = forge->queue_family_index;
-		res = vkCreateCommandPool(forge->device, &command_pool_info, nullptr, &frame->command_pool);
+		auto res = vkCreateCommandPool(forge->device, &command_pool_info, nullptr, &frame->command_pool);
 		VK_RES_CHECK(res);
 
 		if (res != VK_SUCCESS)
@@ -177,11 +134,6 @@ namespace forge
 		if (frame->swapchain == nullptr)
 		{
 			log_error("Failed to initialize frame's swapchain");
-			return false;
-		}
-
-		if (_forge_swapchain_frame_pass_init(forge, frame) == false)
-		{
 			return false;
 		}
 
@@ -219,11 +171,7 @@ namespace forge
 			forge_swapchain_destroy(forge, frame->swapchain);
 		}
 
-		vkDestroyCommandPool(forge->device, frame->command_pool, nullptr);
-		vkDestroySemaphore(forge->device, frame->frame_finished, nullptr);
-		forge_dynamic_memory_destroy(forge, frame->uniform_memory);
-		forge_descriptor_set_manager_destroy(forge, frame->descriptor_set_manager);
-		forge_deferred_queue_destroy(forge, frame->deferred_queue);
+		forge_deletion_queue_push(forge, forge->deletion_queue, frame->command_pool);
 		forge_render_pass_destroy(forge, frame->pass);
 	}
 
@@ -337,7 +285,6 @@ namespace forge
 		VkResult res;
 
 		auto swapchain = frame->swapchain;
-		auto pass = frame->pass;
 
 		// TODO: Add command buffer manager similar to descriptor set manager
 		VkCommandBufferAllocateInfo command_info {};
@@ -358,11 +305,11 @@ namespace forge
 		{
 			forge_swapchain_update(forge, swapchain);
 			_forge_swapchain_frame_pass_update(forge, frame);
-			forge_render_pass_begin(forge, frame->command_buffer, pass);
+			forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
 		}
 		else
 		{
-			forge_render_pass_begin(forge, frame->command_buffer, pass);
+			forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
 		}
 
 		return true;
@@ -384,12 +331,6 @@ namespace forge
 		}
 
 		vkEndCommandBuffer(command_buffer);
-	}
-
-	void
-	forge_frame_deferred_task_add(Forge* forge, ForgeFrame* frame, const std::function<void()>& task)
-	{
-		forge_deferred_queue_push(forge, frame->deferred_queue, task, frame->current_frame + 1);
 	}
 
 	void

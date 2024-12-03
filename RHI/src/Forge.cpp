@@ -9,6 +9,7 @@
 #include "ForgeBuffer.h"
 #include "ForgeDynamicMemory.h"
 #include "ForgeFrame.h"
+#include "ForgeDeletionQueue.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -435,6 +436,13 @@ namespace forge
 			return false;
 		}
 
+		forge->deletion_queue = forge_deletion_queue_new(forge);
+		if (forge->deletion_queue == nullptr)
+		{
+			log_error("Failed to create the deletion queue");
+			return false;
+		}
+
 		VkSemaphoreTypeCreateInfo timeline_info {};
 		timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
 		timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
@@ -471,6 +479,21 @@ namespace forge
 	static void
 	_forge_free(Forge* forge)
 	{
+		if (forge->device)
+		{
+			vkDeviceWaitIdle(forge->device);
+		}
+
+		if (forge->offscreen_rendering_done)
+		{
+			forge_deletion_queue_push(forge, forge->deletion_queue, forge->offscreen_rendering_done);
+		}
+
+		if (forge->swapchain_rendering_done)
+		{
+			forge_deletion_queue_push(forge, forge->deletion_queue, forge->swapchain_rendering_done);
+		}
+
 		if (forge->debug_messenger)
 		{
 			forge->pfn_vkDestroyDebugUtilsMessengerEXT(forge->instance, forge->debug_messenger, nullptr);
@@ -483,13 +506,16 @@ namespace forge
 
 		if (forge->command_pool)
 		{
-			vkDestroyCommandPool(forge->device, forge->command_pool, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, forge->command_pool);
 		}
 
 		if (forge->uniform_memory)
 		{
 			forge_dynamic_memory_destroy(forge, forge->uniform_memory);
 		}
+
+		forge_deletion_queue_flush(forge, forge->deletion_queue, true);
+		forge_deletion_queue_destroy(forge, forge->deletion_queue);
 
 		if (forge->device)
 		{
@@ -528,6 +554,9 @@ namespace forge
 
 		signal_semaphores[signal_semaphores_count] = forge->swapchain_rendering_done;
 		signal_values[signal_semaphores_count++] = forge->swapchain_next_signal;
+
+		signal_semaphores[signal_semaphores_count] = forge->deletion_queue->semaphore;
+		signal_values[signal_semaphores_count++] = forge->deletion_queue->next_signal;
 
 		constexpr uint32_t MAX_WAIT_SEMAPHORES = 4u;
 		VkSemaphore wait_semaphores[MAX_WAIT_SEMAPHORES]{};
@@ -607,5 +636,6 @@ namespace forge
 	forge_flush(Forge* forge)
 	{
 		_forge_swapchain_frame_process(forge, forge->swapchain_frame);
+		forge_deletion_queue_flush(forge, forge->deletion_queue, false);
 	}
 };

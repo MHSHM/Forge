@@ -1,6 +1,7 @@
 #include "Forge.h"
 #include "ForgeBuffer.h"
 #include "ForgeUtils.h"
+#include "ForgeDeletionQueue.h"
 
 namespace forge
 {
@@ -150,12 +151,12 @@ namespace forge
 	{
 		if (buffer->handle)
 		{
-			vkDestroyBuffer(forge->device, buffer->handle, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, buffer->handle);
 		}
 
 		if (buffer->memory)
 		{
-			vkFreeMemory(forge->device, buffer->memory, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, buffer->memory);
 		}
 	}
 

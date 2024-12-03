@@ -2,6 +2,7 @@
 #include "ForgeRenderPass.h"
 #include "ForgeImage.h"
 #include "ForgeUtils.h"
+#include "ForgeDeletionQueue.h"
 
 namespace forge
 {
@@ -143,6 +144,9 @@ namespace forge
 			return false;
 		}
 
+		render_pass->width = width;
+		render_pass->height = height;
+
 		return true;
 	}
 
@@ -151,12 +155,12 @@ namespace forge
 	{
 		if (render_pass->framebuffer)
 		{
-			vkDestroyFramebuffer(forge->device, render_pass->framebuffer, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, render_pass->framebuffer);
 		}
 
 		if (render_pass->handle)
 		{
-			vkDestroyRenderPass(forge->device, render_pass->handle, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, render_pass->handle);
 		}
 	}
 
@@ -223,9 +227,6 @@ namespace forge
 
 		if (has_attachment == false) { log_error("A render pass must have at least one attachment"); return nullptr; }
 		if (same_dimensions == false) { log_error("All attachments of a render pass must have the same dimensions"); return nullptr; }
-
-		render_pass->width  = width;
-		render_pass->height = height;
 
 		if (_forge_render_pass_init(forge, render_pass) == false)
 		{
@@ -318,6 +319,14 @@ namespace forge
 	forge_render_pass_end(Forge* forge, VkCommandBuffer command_buffer, ForgeRenderPass* render_pass)
 	{
 		vkCmdEndRenderPass(command_buffer);
+	}
+
+	void
+	forge_render_pass_update(Forge* forge, ForgeRenderPassDescription description, ForgeRenderPass* render_pass)
+	{
+		render_pass->description = description;
+		_forge_render_pass_free(forge, render_pass);
+		_forge_render_pass_init(forge, render_pass);
 	}
 
 	void

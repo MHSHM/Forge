@@ -50,5 +50,8 @@ namespace forge
 	forge_render_pass_end(Forge* forge, VkCommandBuffer command_buffer, ForgeRenderPass* render_pass);
 
 	void
+	forge_render_pass_update(Forge* forge, ForgeRenderPassDescription description, ForgeRenderPass* render_pass);
+
+	void
 	forge_render_pass_destroy(Forge* forge, ForgeRenderPass* render_pass);
 };

@@ -2,6 +2,7 @@
 #include "ForgeSwapchain.h"
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
+#include "ForgeDeletionQueue.h"
 
 namespace forge
 {
@@ -209,9 +210,7 @@ namespace forge
 			return false;
 		}
 
-		// TODO: Add a deletion queue
-		vkDeviceWaitIdle(forge->device);
-		vkDestroySwapchainKHR(forge->device, old_swapchain, nullptr);
+		forge_deletion_queue_push(forge, forge->deletion_queue, old_swapchain);
 
 		swapchain->images.clear();
 		swapchain->images.resize(swapchain->description.images_count);
@@ -236,6 +235,17 @@ namespace forge
 	static void
 	_forge_swapchain_free(Forge* forge, ForgeSwapchain* swapchain)
 	{
+		for (uint32_t i = 0; i < FORGE_SWAPCHIAN_INFLIGH_FRAMES; ++i)
+		{
+			forge_deletion_queue_push(forge, forge->deletion_queue, swapchain->fence[i]);
+			forge_deletion_queue_push(forge, forge->deletion_queue, swapchain->rendering_done[i]);
+			forge_deletion_queue_push(forge, forge->deletion_queue, swapchain->image_available[i]);
+		}
+
+		// TODO: Since surface and swapchain are paired together and given the current state of the deletion queue
+		// you can't easily push the surface into the deletion queue
+		vkDeviceWaitIdle(forge->device);
+
 		if (swapchain->handle)
 		{
 			vkDestroySwapchainKHR(forge->device, swapchain->handle, nullptr);

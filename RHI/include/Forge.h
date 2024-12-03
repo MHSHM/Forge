@@ -19,6 +19,7 @@ namespace forge
 	struct ForgeBuffer;
 	struct ForgeFrame;
 	struct ForgeDynamicMemory;
+	struct ForgeDeletionQueue;
 
 	static constexpr uint32_t FORGE_MAX_OFF_SCREEN_FRAMES = 16u;
 
@@ -41,6 +42,7 @@ namespace forge
 		VkCommandBuffer staging_command_buffer;
 
 		ForgeDynamicMemory* uniform_memory;
+		ForgeDeletionQueue* deletion_queue;
 
 		VkDebugUtilsMessengerEXT debug_messenger;
 		PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT;

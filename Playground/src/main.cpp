@@ -11,7 +11,7 @@
 #include <ForgeBuffer.h>
 #include <ForgeImage.h>
 #include <ForgeRenderPass.h>
-#include <ForgeDeferedQueue.h>
+#include <ForgeDeletionQueue.h>
 #include <ForgeShader.h>
 #include <ForgeBindingList.h>
 #include <ForgeDescriptorSetManager.h>
@@ -77,6 +77,7 @@ int main()
 		glfwPollEvents();
 	}
 
+	forge_frame_destroy(forge, swapchain_frame);
 	forge_destroy(forge);
 
 	return 0;

@@ -29,6 +29,7 @@ namespace forge
 	struct ForgeImage
 	{
 		VkImage handle;
+		VkDeviceMemory memory;
 		VkImageView shader_view;
 		VkImageView render_target_view;
 		VkImageViewType view_type;

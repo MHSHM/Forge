@@ -7,6 +7,7 @@
 #include "ForgeUtils.h"
 #include "ForgeDynamicMemory.h"
 #include "ForgeBuffer.h"
+#include "ForgeDeletionQueue.h"
 
 namespace forge
 {
@@ -191,7 +192,9 @@ namespace forge
 	_forge_descriptor_set_manager_free(Forge* forge, ForgeDescriptorSetManager* manager)
 	{
 		for (auto [layout, allocator] : manager->allocators)
-			vkDestroyDescriptorPool(forge->device, allocator.pool, nullptr);
+		{
+			forge_deletion_queue_push(forge, forge->deletion_queue, allocator.pool);
+		}
 	}
 
 	ForgeDescriptorSetManager*
@@ -220,7 +223,7 @@ namespace forge
 	void
 	forge_descriptor_set_manager_flush(Forge* forge, ForgeDescriptorSetManager* manager)
 	{
-	
+		// TODO:
 	}
 
 	void

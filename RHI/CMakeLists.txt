@@ -32,7 +32,7 @@ set(RHI_SOURCES
     src/ForgeBuffer.cpp
     src/ForgeImage.cpp
     src/ForgeRenderPass.cpp
-    src/ForgeDeferedQueue.cpp
+    src/ForgeDeletionQueue.cpp
     src/ForgeShader.cpp
     src/ForgeBindingList.cpp
     src/ForgeDescriptorSetManager.cpp
@@ -50,7 +50,7 @@ set(RHI_HEADERS
     include/ForgeBuffer.h
     include/ForgeImage.h
     include/ForgeRenderPass.h
-    include/ForgeDeferedQueue.h
+    include/ForgeDeletionQueue.h
     include/ForgeShader.h
     include/ForgeBindingList.h
     include/ForgeDescriptorSetManager.h

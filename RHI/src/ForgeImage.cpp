@@ -3,6 +3,7 @@
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeBuffer.h"
+#include "ForgeDeletionQueue.h"
 
 namespace forge
 {
@@ -58,8 +59,7 @@ namespace forge
 		alloc_info.allocationSize = mem_requirements.size;
 		alloc_info.memoryTypeIndex = _find_memory_type(forge, mem_requirements.memoryTypeBits, image->description.memory_properties);
 
-		VkDeviceMemory memory;
-		res = vkAllocateMemory(forge->device, &alloc_info, nullptr, &memory);
+		res = vkAllocateMemory(forge->device, &alloc_info, nullptr, &image->memory);
 		VK_RES_CHECK(res);
 
 		if (res != VK_SUCCESS)
@@ -68,7 +68,7 @@ namespace forge
 			return false;
 		}
 
-		res = vkBindImageMemory(forge->device, image->handle, memory, 0);
+		res = vkBindImageMemory(forge->device, image->handle, image->memory, 0);
 		VK_RES_CHECK(res);
 
 		// shader view
@@ -145,19 +145,29 @@ namespace forge
 	static void
 	_forge_image_free(Forge* forge, ForgeImage* image)
 	{
+		if (image->sampler)
+		{
+			forge_deletion_queue_push(forge, forge->deletion_queue, image->sampler);
+		}
+
 		if (image->shader_view)
 		{
-			vkDestroyImageView(forge->device, image->shader_view, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, image->shader_view);
 		}
 
 		if (image->render_target_view)
 		{
-			vkDestroyImageView(forge->device, image->render_target_view, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, image->render_target_view);
+		}
+
+		if (image->memory)
+		{
+			forge_deletion_queue_push(forge, forge->deletion_queue, image->memory);
 		}
 
 		if (image->handle)
 		{
-			vkDestroyImage(forge->device, image->handle, nullptr);
+			forge_deletion_queue_push(forge, forge->deletion_queue, image->handle);
 		}
 	}
 
