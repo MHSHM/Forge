@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <functional>
+
 namespace forge
 {
 	struct Forge;
@@ -40,6 +42,9 @@ namespace forge
 
 	void
 	forge_frame_end(Forge* forge, ForgeFrame* frame);
+
+	void
+	forge_frame_deferred_task_add(Forge* forge, ForgeFrame* frame, const std::function<void()>& task);
 
 	void
 	forge_frame_destroy(Forge* forge, ForgeFrame* frame);

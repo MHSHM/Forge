@@ -15,11 +15,11 @@ namespace forge
 	static void
 	_forge_deferred_queue_flush(Forge* forge, ForgeDeferredQueue* queue, VkSemaphore semaphore, bool immediate)
 	{
-		std::remove_if(queue->entries.begin(), queue->entries.end(), [forge, immediate, queue, semaphore](const ForgeDeferredQueue::Entry& entry) {
-			uint64_t value;
-			auto res = vkGetSemaphoreCounterValue(forge->device, semaphore, &value);
-			VK_RES_CHECK(res);
+		uint64_t value;
+		auto res = vkGetSemaphoreCounterValue(forge->device, semaphore, &value);
+		VK_RES_CHECK(res);
 
+		auto iter = std::remove_if(queue->entries.begin(), queue->entries.end(), [forge, immediate, queue, value](const ForgeDeferredQueue::Entry& entry) {
 			if (immediate || value >= entry.signal)
 			{
 				entry.task();
@@ -28,6 +28,8 @@ namespace forge
 
 			return false;
 		});
+
+		queue->entries.erase(iter, queue->entries.end());
 	}
 
 	ForgeDeferredQueue*

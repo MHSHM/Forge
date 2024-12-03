@@ -25,8 +25,10 @@ namespace forge
 		VkSurfaceKHR surface;
 		VkColorSpaceKHR color_space;
 		std::vector<VkImage> images;
+		uint32_t image_index;
 		VkSemaphore image_available[FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		VkSemaphore rendering_done[FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+		VkFence fence[FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		ForgeSwapchainDescription description;
 	};
 

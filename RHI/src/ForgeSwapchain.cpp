@@ -159,6 +159,18 @@ namespace forge
 				log_error("Failed to create the rendering done semaphore");
 				return false;
 			}
+
+			VkFenceCreateInfo fence_info {};
+			fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+			res = vkCreateFence(forge->device, &fence_info, nullptr, &swapchain->fence[i]);
+			VK_RES_CHECK(res);
+
+			if (res != VK_SUCCESS)
+			{
+				log_error("Faile to create the swapchain fence");
+				return false;
+			}
 		}
 
 		log_info("Swapchain was created successfully");
@@ -181,7 +193,7 @@ namespace forge
 		swapchain_info.imageColorSpace = swapchain->color_space;
 		swapchain_info.imageExtent = { width, height };
 		swapchain_info.imageArrayLayers = 1u;
-		swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapchain_info.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 		swapchain_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
