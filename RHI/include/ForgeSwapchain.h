@@ -30,6 +30,7 @@ namespace forge
 		VkSemaphore rendering_done[FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		VkFence fence[FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		ForgeSwapchainDescription description;
+		uint32_t frame_index;
 	};
 
 	ForgeSwapchain*

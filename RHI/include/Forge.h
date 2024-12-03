@@ -12,11 +12,15 @@
 
 #include <string>
 #include <assert.h>
+#include <array>
 
 namespace forge
 {
 	struct ForgeBuffer;
+	struct ForgeFrame;
 	struct ForgeDynamicMemory;
+
+	static constexpr uint32_t FORGE_MAX_OFF_SCREEN_FRAMES = 16u;
 
 	struct Forge
 	{
@@ -44,6 +48,15 @@ namespace forge
 		PFN_vkSetDebugUtilsObjectNameEXT pfn_vkSetDebugUtilsObjectNameEXT;
 		PFN_vkCmdBeginDebugUtilsLabelEXT pfn_vkCmdBeginDebugUtilsLabelEXT;
 		PFN_vkCmdEndDebugUtilsLabelEXT pfn_vkCmdEndDebugUtilsLabelEXT;
+
+		ForgeFrame* swapchain_frame;
+		VkSemaphore swapchain_rendering_done;
+		uint64_t swapchain_next_signal;
+
+		ForgeFrame* offscreen_frames[FORGE_MAX_OFF_SCREEN_FRAMES];
+		VkSemaphore offscreen_rendering_done;
+		uint32_t offscreen_frames_count;
+		uint64_t offscreen_next_signal;
 	};
 
 	Forge*
@@ -51,4 +64,7 @@ namespace forge
 
 	void
 	forge_destroy(Forge* forge);
+
+	void
+	forge_flush(Forge* forge);
 };

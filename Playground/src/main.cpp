@@ -72,6 +72,7 @@ int main()
 	{
 		forge::forge_frame_begin(forge, swapchain_frame);
 		forge::forge_frame_end(forge, swapchain_frame);
+		forge::forge_flush(forge);
 
 		glfwPollEvents();
 	}

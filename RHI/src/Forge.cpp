@@ -8,6 +8,7 @@
 #include "ForgeUtils.h"
 #include "ForgeBuffer.h"
 #include "ForgeDynamicMemory.h"
+#include "ForgeFrame.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -434,6 +435,36 @@ namespace forge
 			return false;
 		}
 
+		VkSemaphoreTypeCreateInfo timeline_info {};
+		timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+		timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+		timeline_info.initialValue = 0;
+
+		VkSemaphoreCreateInfo rendering_done_info{};
+		rendering_done_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		rendering_done_info.pNext = &timeline_info;
+		rendering_done_info.flags = 0;
+		auto res = vkCreateSemaphore(forge->device, &rendering_done_info, NULL, &forge->swapchain_rendering_done);
+		VK_RES_CHECK(res);
+
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to initialize swapchain's rendering done semaphore");
+			return false;
+		}
+
+		res = vkCreateSemaphore(forge->device, &rendering_done_info, nullptr, &forge->offscreen_rendering_done);
+		VK_RES_CHECK(res);
+
+		if (res != VK_SUCCESS)
+		{
+			log_error("Failed to initialize offscreen rendering done semaphore");
+			return false;
+		}
+
+		forge->offscreen_next_signal = 1u;
+		forge->swapchain_next_signal = 1u;
+
 		return true;
 	}
 
@@ -471,6 +502,84 @@ namespace forge
 		}
 	}
 
+	static void
+	_forge_swapchain_frame_process(Forge* forge, ForgeFrame* frame)
+	{
+		if (frame == nullptr)
+		{
+			return;
+		}
+
+		VkResult res;
+
+		auto swapchain = frame->swapchain;
+		auto command_buffer = frame->command_buffer;
+		auto index = swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES;
+
+		VkFence signal_fence = swapchain->fence[index];
+
+		constexpr uint32_t MAX_SIGNAL_SEMAPHORES = 4u;
+		VkSemaphore signal_semaphores[MAX_SIGNAL_SEMAPHORES]{};
+		uint64_t signal_values[MAX_SIGNAL_SEMAPHORES]{};
+		uint32_t signal_semaphores_count = 0u;
+
+		signal_semaphores[signal_semaphores_count] = swapchain->rendering_done[index];
+		signal_values[signal_semaphores_count++] = UINT64_MAX;
+
+		signal_semaphores[signal_semaphores_count] = forge->swapchain_rendering_done;
+		signal_values[signal_semaphores_count++] = forge->swapchain_next_signal;
+
+		constexpr uint32_t MAX_WAIT_SEMAPHORES = 4u;
+		VkSemaphore wait_semaphores[MAX_WAIT_SEMAPHORES]{};
+		uint64_t wait_values[MAX_WAIT_SEMAPHORES]{};
+		VkPipelineStageFlags wait_stages[MAX_WAIT_SEMAPHORES] = {};
+		uint32_t wait_semaphores_count = 0;
+
+		wait_semaphores[wait_semaphores_count] = swapchain->image_available[index];
+		wait_values[wait_semaphores_count] = UINT64_MAX;
+		wait_stages[wait_semaphores_count++] = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+		if (forge->offscreen_frames_count > 0)
+		{
+			wait_semaphores[wait_semaphores_count] = forge->offscreen_rendering_done;
+			wait_values[wait_semaphores_count] = forge->offscreen_next_signal;
+			wait_stages[wait_semaphores_count++] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+
+		VkTimelineSemaphoreSubmitInfo timeline_info{};
+		timeline_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+		timeline_info.waitSemaphoreValueCount = wait_semaphores_count;
+		timeline_info.pWaitSemaphoreValues = wait_values;
+		timeline_info.signalSemaphoreValueCount = signal_semaphores_count;
+		timeline_info.pSignalSemaphoreValues = signal_values;
+
+		VkSubmitInfo submit_info {};
+		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit_info.pNext = &timeline_info;
+		submit_info.waitSemaphoreCount = wait_semaphores_count;
+		submit_info.pWaitSemaphores = wait_semaphores;
+		submit_info.pWaitDstStageMask = wait_stages;
+		submit_info.commandBufferCount = 1u;
+		submit_info.pCommandBuffers = &command_buffer;
+		submit_info.signalSemaphoreCount = signal_semaphores_count;
+		submit_info.pSignalSemaphores = signal_semaphores;
+		res = vkQueueSubmit(forge->queue, 1u, &submit_info, signal_fence);
+		VK_RES_CHECK(res);
+
+		VkPresentInfoKHR present_info{};
+		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.waitSemaphoreCount = 1u;
+		present_info.pWaitSemaphores = &signal_semaphores[0];
+		present_info.swapchainCount = 1u;
+		present_info.pSwapchains = &swapchain->handle;
+		present_info.pImageIndices = &swapchain->image_index;
+		res = vkQueuePresentKHR(forge->queue, &present_info);
+		VK_RES_CHECK(res);
+
+		forge->swapchain_next_signal++;
+		swapchain->frame_index++;
+	}
+
 	Forge*
 	forge_new()
 	{
@@ -492,5 +601,11 @@ namespace forge
 			_forge_free(forge);
 			delete forge;
 		}
+	}
+
+	void
+	forge_flush(Forge* forge)
+	{
+		_forge_swapchain_frame_process(forge, forge->swapchain_frame);
 	}
 };

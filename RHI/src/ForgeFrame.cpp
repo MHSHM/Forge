@@ -234,9 +234,9 @@ namespace forge
 
 		auto swapchain = frame->swapchain;
 		auto command_buffer = frame->command_buffer;
-		auto image_available = swapchain->image_available[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
-		auto rendering_done = swapchain->rendering_done[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
-		auto fence = swapchain->fence[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+		auto image_available = swapchain->image_available[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+		auto rendering_done = swapchain->rendering_done[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+		auto fence = swapchain->fence[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 
 		res = vkWaitForFences(forge->device, 1u, &fence, VK_TRUE, UINT64_MAX);
 		VK_RES_CHECK(res);
@@ -305,6 +305,7 @@ namespace forge
 	forge_frame_new(Forge* forge, ForgeImage* color, ForgeImage* depth)
 	{
 		auto frame = new ForgeFrame();
+		forge->offscreen_frames[forge->offscreen_frames_count++] = frame;
 
 		if (_forge_offscreen_frame_init(forge, color, depth, frame) == false)
 		{
@@ -319,6 +320,7 @@ namespace forge
 	forge_frame_new(Forge* forge, ForgeSwapchainDescription swapchain_desc)
 	{
 		auto frame = new ForgeFrame();
+		forge->swapchain_frame = frame;
 
 		if (_forge_swapchain_frame_init(forge, swapchain_desc, frame) == false)
 		{
@@ -376,71 +378,12 @@ namespace forge
 
 		forge_render_pass_end(forge, command_buffer, frame->pass);
 
-		VkFence signal_fence = VK_NULL_HANDLE;
-
-		constexpr uint32_t MAX_SIGNAL_SEMAPHORES = 4u;
-		VkSemaphore signal_semaphores[MAX_SIGNAL_SEMAPHORES]{};
-		uint64_t signal_values[MAX_SIGNAL_SEMAPHORES]{};
-		uint32_t signal_semaphores_count = 0u;
-
-		constexpr uint32_t MAX_WAIT_SEMAPHORES = 4u;
-		VkSemaphore wait_semaphores[MAX_WAIT_SEMAPHORES]{};
-		uint32_t wait_semaphores_count = 0u;
-
-		signal_semaphores[signal_semaphores_count] = frame->frame_finished;
-		signal_values[signal_semaphores_count++] = frame->current_frame + 1;
-
 		if (swapchain)
 		{
 			_forge_pass_swapchain_blit(forge, frame);
-
-			signal_fence = swapchain->fence[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
-
-			signal_semaphores[signal_semaphores_count] = swapchain->rendering_done[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
-			signal_values[signal_semaphores_count++] = UINT64_MAX;
-
-			wait_semaphores[wait_semaphores_count++] = swapchain->image_available[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		}
 
 		vkEndCommandBuffer(command_buffer);
-
-		VkTimelineSemaphoreSubmitInfo timeline_info {};
-		timeline_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-		timeline_info.signalSemaphoreValueCount = signal_semaphores_count;
-		timeline_info.pSignalSemaphoreValues = signal_values;
-
-		VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-		VkSubmitInfo submit_info {};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.pNext = &timeline_info;
-		submit_info.waitSemaphoreCount = wait_semaphores_count;
-		submit_info.pWaitSemaphores = wait_semaphores;
-		submit_info.pWaitDstStageMask = &wait_stage; // Is this the correct stage to wait on?
-		submit_info.commandBufferCount = 1u;
-		submit_info.pCommandBuffers = &command_buffer;
-		submit_info.signalSemaphoreCount = signal_semaphores_count;
-		submit_info.pSignalSemaphores = signal_semaphores;
-		res = vkQueueSubmit(forge->queue, 1u, &submit_info, signal_fence);
-		VK_RES_CHECK(res);
-
-		if (frame->swapchain)
-		{
-			auto wait_semaphore = swapchain->rendering_done[frame->current_frame % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
-
-			VkPresentInfoKHR present_info{};
-			present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-			present_info.waitSemaphoreCount = 1u;
-			present_info.pWaitSemaphores = &wait_semaphore;
-			present_info.swapchainCount = 1u;
-			present_info.pSwapchains = &swapchain->handle;
-			present_info.pImageIndices = &swapchain->image_index;
-			res = vkQueuePresentKHR(forge->queue, &present_info);
-			VK_RES_CHECK(res);
-		}
-
-		forge_deferred_queue_flush(forge, frame->deferred_queue, frame->frame_finished, false);
-		frame->current_frame++;
 	}
 
 	void
