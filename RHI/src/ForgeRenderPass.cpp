@@ -39,8 +39,8 @@ namespace forge
 			color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			color_attachment.loadOp = color_attachment_desc.load_op;
 			color_attachment.storeOp = color_attachment_desc.store_op;
-			color_attachment.initialLayout = color_attachment_desc.initial_layout;
-			color_attachment.finalLayout = color_attachment_desc.final_layout;
+			color_attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 			color_attachment_reference.attachment = i;
 			color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -64,8 +64,8 @@ namespace forge
 			depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			depth_attachment.loadOp = depth_attachment_desc.load_op;
 			depth_attachment.storeOp = depth_attachment_desc.store_op;
-			depth_attachment.initialLayout = depth_attachment_desc.initial_layout;
-			depth_attachment.finalLayout = depth_attachment_desc.final_layout;
+			depth_attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 			depth_attachment_reference.attachment = attachments_count;
 			depth_attachment_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -245,35 +245,12 @@ namespace forge
 		VkClearValue clear_values[FORGE_RENDER_PASS_MAX_ATTACHMENTS + 1] = {};
 		uint32_t attachments_count = 0u;
 
-		// TODO: Could be better
-		VkImageMemoryBarrier barrier {};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		barrier.subresourceRange.baseArrayLayer = 0u;
-		barrier.subresourceRange.layerCount = 1u;
-		barrier.subresourceRange.baseMipLevel = 0u;
-		barrier.subresourceRange.levelCount = 1u;
-
-		// Transition to the expected initial layout
 		for (auto& attachment : attachments)
 		{
 			if (attachment.image == nullptr)
 				continue;
 
-			barrier.newLayout = attachment.initial_layout;
-			barrier.image = attachment.image->handle;
-			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			vkCmdPipelineBarrier(
-				command_buffer,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				0u,
-				0u, nullptr,
-				0u, nullptr,
-				1u, &barrier
-			);
+			forge_image_layout_transition(forge, command_buffer, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, attachment.image);
 
 			clear_values[attachments_count].color = {
 				attachment.clear_action.color[0],
@@ -287,18 +264,7 @@ namespace forge
 
 		if (render_pass_desc.depth.image != nullptr)
 		{
-			barrier.newLayout = render_pass_desc.depth.initial_layout;
-			barrier.image = render_pass_desc.depth.image->handle;
-			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-			vkCmdPipelineBarrier(
-				command_buffer,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-				0u,
-				0u, nullptr,
-				0u, nullptr,
-				1u, &barrier
-			);
+			forge_image_layout_transition(forge, command_buffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, render_pass_desc.depth.image);
 
 			clear_values[attachments_count].depthStencil = {render_pass_desc.depth.clear_action.depth};
 

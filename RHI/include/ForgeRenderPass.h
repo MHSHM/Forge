@@ -20,8 +20,6 @@ namespace forge
 		ForgeImage* image; // Doesn't own the image
 		VkAttachmentLoadOp load_op;
 		VkAttachmentStoreOp store_op;
-		VkImageLayout initial_layout;
-		VkImageLayout final_layout;
 		ForgeAttachmentClearAction clear_action;
 	};
 

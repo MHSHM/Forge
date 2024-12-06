@@ -20,8 +20,6 @@ namespace forge
 		color_attachment_desc.image = color;
 		color_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR; // TODO: This should be provided by the user
 		color_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment_desc.initial_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		color_attachment_desc.final_layout = color_final_layout;
 		color_attachment_desc.clear_action.color[0] = 1.0f;
 		color_attachment_desc.clear_action.color[1] = 0.0f;
 		color_attachment_desc.clear_action.color[2] = 1.0f;
@@ -31,8 +29,6 @@ namespace forge
 		depth_attachment_desc.image = depth;
 		depth_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depth_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
-		depth_attachment_desc.initial_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		depth_attachment_desc.final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		depth_attachment_desc.clear_action.depth = 1.0f;
 
 		ForgeRenderPassDescription pass_desc {};
@@ -185,6 +181,7 @@ namespace forge
 		auto image_available = swapchain->image_available[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		auto rendering_done = swapchain->rendering_done[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		auto fence = swapchain->fence[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
+		auto extent = swapchain->description.extent;
 
 		res = vkWaitForFences(forge->device, 1u, &fence, VK_TRUE, UINT64_MAX);
 		VK_RES_CHECK(res);
@@ -195,31 +192,14 @@ namespace forge
 		res = vkAcquireNextImageKHR(forge->device, swapchain->handle, UINT64_MAX, image_available, VK_NULL_HANDLE, &swapchain->image_index);
 		VK_RES_CHECK(res);
 
-		auto dst_image = swapchain->images[swapchain->image_index];
-		auto src_image = frame->pass->description.colors[0].image->handle;
-		auto extent = swapchain->description.extent;
+		auto src_image = frame->pass->description.colors[0].image;
+		ForgeImage dst_image {};
+		dst_image.handle = swapchain->images[swapchain->image_index];
+		dst_image.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+		dst_image.layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-		VkImageMemoryBarrier barrier {};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.srcAccessMask = VK_ACCESS_NONE;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.image = dst_image;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseMipLevel = 0u;
-		barrier.subresourceRange.levelCount = 1u;
-		barrier.subresourceRange.baseArrayLayer = 0u;
-		barrier.subresourceRange.layerCount = 1u;
-		vkCmdPipelineBarrier(
-			command_buffer,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_TRANSFER_BIT,
-			0u,
-			0u, nullptr,
-			0u, nullptr,
-			1u, &barrier
-		);
+		forge_image_layout_transition(forge, command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, src_image);
+		forge_image_layout_transition(forge, command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &dst_image);
 
 		VkImageBlit image_blit {};
 		image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -231,22 +211,9 @@ namespace forge
 		image_blit.dstSubresource = image_blit.srcSubresource;
 		image_blit.dstOffsets[0] = image_blit.srcOffsets[0];
 		image_blit.dstOffsets[1] = image_blit.srcOffsets[1];
-		vkCmdBlitImage(command_buffer, src_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &image_blit, VK_FILTER_NEAREST);
+		vkCmdBlitImage(command_buffer, src_image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst_image.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &image_blit, VK_FILTER_NEAREST);
 
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_NONE;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		barrier.image = dst_image;
-		vkCmdPipelineBarrier(
-			command_buffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT,
-			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-			0u,
-			0u, nullptr,
-			0u, nullptr,
-			1u, &barrier
-		);
+		forge_image_layout_transition(forge, command_buffer, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, &dst_image);
 	}
 
 	ForgeFrame*

@@ -29,6 +29,9 @@ namespace forge
 			levels_count = static_cast<uint32_t>(std::floor(std::log2(largest_dimension))) + 1;
 		}
 
+		image->aspect = _forge_image_aspect(image->description.format);
+		image->layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
 		VkImageCreateInfo image_info{};
 		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		image_info.flags = image->description.create_flags;
@@ -81,7 +84,7 @@ namespace forge
 		view_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		view_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 		view_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		view_info.subresourceRange.aspectMask = _forge_image_aspect(image->description.format);
+		view_info.subresourceRange.aspectMask = image->aspect;
 		view_info.subresourceRange.baseMipLevel = 0;
 		view_info.subresourceRange.levelCount = levels_count;
 		view_info.subresourceRange.baseArrayLayer = 0;
@@ -172,6 +175,34 @@ namespace forge
 	}
 
 	static void
+	_forge_image_layout_transition(Forge* forge, VkCommandBuffer command_buffer, VkImageLayout new_layout, ForgeImage* image)
+	{
+		VkImageMemoryBarrier barrier {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.srcAccessMask = _forge_image_memory_barrier_src_access(image->layout);
+		barrier.dstAccessMask = _forge_image_memory_barrier_dst_access(new_layout);
+		barrier.oldLayout = image->layout;
+		barrier.newLayout = new_layout;
+		barrier.image = image->handle;
+		barrier.subresourceRange.aspectMask = image->aspect;
+		barrier.subresourceRange.baseMipLevel = 0u;
+		barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+		barrier.subresourceRange.baseArrayLayer = 0u;
+		barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+		vkCmdPipelineBarrier(
+			command_buffer,
+			_forge_image_memory_barrier_pipeline_stage(image->layout),
+			_forge_image_memory_barrier_pipeline_stage(new_layout),
+			0u,
+			0u, nullptr,
+			0u, nullptr,
+			1u, &barrier
+		);
+
+		image->layout = new_layout;
+	}
+
+	static void
 	_forge_image_write(Forge* forge, ForgeImage* image, uint32_t layer, uint32_t size, void* data)
 	{
 		VkResult res;
@@ -196,7 +227,7 @@ namespace forge
 		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.image = image->handle;
-		barrier.subresourceRange.aspectMask = _forge_image_aspect(image->description.format);;
+		barrier.subresourceRange.aspectMask = image->aspect;
 		barrier.subresourceRange.baseMipLevel = 0u;
 		barrier.subresourceRange.levelCount = 1u;
 		barrier.subresourceRange.baseArrayLayer = layer;
@@ -250,7 +281,7 @@ namespace forge
 
 			VkBufferImageCopy copy_info{};
 			copy_info.bufferOffset = staging_buffer->cursor;
-			copy_info.imageSubresource.aspectMask = _forge_image_aspect(image->description.format);
+			copy_info.imageSubresource.aspectMask = image->aspect;
 			copy_info.imageSubresource.mipLevel = 0u;
 			copy_info.imageSubresource.baseArrayLayer = layer;
 			copy_info.imageSubresource.layerCount = 1u;
@@ -292,41 +323,26 @@ namespace forge
 		uint32_t layers_count = image->description.create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6u : 1;
 		uint32_t largest_dimension = std::max({ image->description.extent.width, image->description.extent.height, 1u });
 		uint32_t levels_count = static_cast<uint32_t>(std::floor(std::log2(largest_dimension))) + 1;
-		VkImageAspectFlags aspect = _forge_image_aspect(image->description.format);
 
-		VkImageMemoryBarrier barrier {};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.image = image->handle;
-		barrier.subresourceRange.aspectMask = aspect;
-		barrier.subresourceRange.baseMipLevel = 0u;
-		barrier.subresourceRange.levelCount = levels_count;
-		barrier.subresourceRange.baseArrayLayer = 0u;
-		barrier.subresourceRange.layerCount = layers_count;
-		vkCmdPipelineBarrier(
-			command_buffer,
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-			VK_PIPELINE_STAGE_TRANSFER_BIT,
-			0u,
-			0u, nullptr,
-			0u, nullptr,
-			1u, &barrier
-		);
+		_forge_image_layout_transition(forge, command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, image);
 
 		int32_t mip_width = image->description.extent.width;
 		int32_t mip_height = image->description.extent.height;
 
 		for (uint32_t i = 0; i < levels_count - 1; ++i)
 		{
+			VkImageMemoryBarrier barrier {};
+			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.image = image->handle;
+			barrier.subresourceRange.aspectMask = image->aspect;
 			barrier.subresourceRange.baseMipLevel = i;
 			barrier.subresourceRange.levelCount = 1u;
+			barrier.subresourceRange.baseArrayLayer = 0u;
+			barrier.subresourceRange.layerCount = layers_count;
 			vkCmdPipelineBarrier(
 				command_buffer,
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -340,13 +356,13 @@ namespace forge
 			VkImageBlit blit {};
 			blit.srcOffsets[0] = { 0, 0, 0 };
 			blit.srcOffsets[1] = { mip_width, mip_height, 1 };
-			blit.srcSubresource.aspectMask = aspect;
+			blit.srcSubresource.aspectMask = image->aspect;
 			blit.srcSubresource.mipLevel = i;
 			blit.srcSubresource.baseArrayLayer = 0;
 			blit.srcSubresource.layerCount = layers_count;
 			blit.dstOffsets[0] = { 0, 0, 0 };
 			blit.dstOffsets[1] = { std::max(mip_width / 2, 1), std::max(mip_height / 2, 1), 1 };
-			blit.dstSubresource.aspectMask = aspect;
+			blit.dstSubresource.aspectMask = image->aspect;
 			blit.dstSubresource.mipLevel = i + 1;
 			blit.dstSubresource.baseArrayLayer = 0;
 			blit.dstSubresource.layerCount = layers_count;
@@ -363,12 +379,18 @@ namespace forge
 			mip_height = std::max(mip_height / 2u, 1u);
 		}
 
+		VkImageMemoryBarrier barrier {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.image = image->handle;
+		barrier.subresourceRange.aspectMask = image->aspect;
 		barrier.subresourceRange.baseMipLevel = levels_count - 1u;
 		barrier.subresourceRange.levelCount = 1u;
+		barrier.subresourceRange.baseArrayLayer = 0u;
+		barrier.subresourceRange.layerCount = layers_count;
 		vkCmdPipelineBarrier(
 			command_buffer,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -441,5 +463,13 @@ namespace forge
 		if (image->description.mipmaps == false) { log_warning("Image was not marked as it should have mipmaps, skipping the operation"); return; }
 
 		_forge_image_mipmaps_generate(forge, command_buffer, image);
+	}
+
+	void
+	forge_image_layout_transition(Forge* forge, VkCommandBuffer command_buffer, VkImageLayout new_layout, ForgeImage* image)
+	{
+		if (image->layout == new_layout){ return; }
+
+		_forge_image_layout_transition(forge, command_buffer, new_layout, image);
 	}
 }

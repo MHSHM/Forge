@@ -34,6 +34,8 @@ namespace forge
 		VkImageView render_target_view;
 		VkImageViewType view_type;
 		VkSampler sampler;
+		VkImageLayout layout;
+		VkImageAspectFlags aspect;
 		ForgeImageDescription description;
 	};
 
@@ -45,6 +47,9 @@ namespace forge
 
 	void
 	forge_image_mipmaps_generate(Forge* forge, VkCommandBuffer command_buffer, ForgeImage* image);
+
+	void
+	forge_image_layout_transition(Forge* forge, VkCommandBuffer command_buffer, VkImageLayout new_layout, ForgeImage* image);
 
 	void
 	forge_image_destroy(Forge* forge, ForgeImage* image);
