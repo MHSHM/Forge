@@ -20,6 +20,7 @@ namespace forge
 	struct ForgeFrame;
 	struct ForgeDynamicMemory;
 	struct ForgeDeletionQueue;
+	struct ForgeDescriptorSetManager;
 
 	static constexpr uint32_t FORGE_MAX_OFF_SCREEN_FRAMES = 16u;
 
@@ -43,6 +44,7 @@ namespace forge
 
 		ForgeDynamicMemory* uniform_memory;
 		ForgeDeletionQueue* deletion_queue;
+		ForgeDescriptorSetManager* descriptor_set_manager;
 
 		VkDebugUtilsMessengerEXT debug_messenger;
 		PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT;
@@ -52,7 +54,7 @@ namespace forge
 		PFN_vkCmdEndDebugUtilsLabelEXT pfn_vkCmdEndDebugUtilsLabelEXT;
 
 		ForgeFrame* swapchain_frame;
-		VkSemaphore swapchain_rendering_done;
+		VkSemaphore swapchain_blitting_done;
 		uint64_t swapchain_next_signal;
 
 		ForgeFrame* offscreen_frames[FORGE_MAX_OFF_SCREEN_FRAMES];

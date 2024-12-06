@@ -10,6 +10,7 @@
 #include "ForgeDynamicMemory.h"
 #include "ForgeFrame.h"
 #include "ForgeDeletionQueue.h"
+#include "ForgeDescriptorSetManager.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -439,7 +440,14 @@ namespace forge
 		forge->deletion_queue = forge_deletion_queue_new(forge);
 		if (forge->deletion_queue == nullptr)
 		{
-			log_error("Failed to create the deletion queue");
+			log_error("Failed to initialize the deletion queue");
+			return false;
+		}
+
+		forge->descriptor_set_manager = forge_descriptor_set_manager_new(forge);
+		if (forge->descriptor_set_manager == nullptr)
+		{
+			log_error("Failed to initialize the descriptor set manager");
 			return false;
 		}
 
@@ -452,7 +460,7 @@ namespace forge
 		rendering_done_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 		rendering_done_info.pNext = &timeline_info;
 		rendering_done_info.flags = 0;
-		auto res = vkCreateSemaphore(forge->device, &rendering_done_info, NULL, &forge->swapchain_rendering_done);
+		auto res = vkCreateSemaphore(forge->device, &rendering_done_info, NULL, &forge->swapchain_blitting_done);
 		VK_RES_CHECK(res);
 
 		if (res != VK_SUCCESS)
@@ -489,9 +497,9 @@ namespace forge
 			forge_deletion_queue_push(forge, forge->deletion_queue, forge->offscreen_rendering_done);
 		}
 
-		if (forge->swapchain_rendering_done)
+		if (forge->swapchain_blitting_done)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, forge->swapchain_rendering_done);
+			forge_deletion_queue_push(forge, forge->deletion_queue, forge->swapchain_blitting_done);
 		}
 
 		if (forge->debug_messenger)
@@ -552,7 +560,7 @@ namespace forge
 		signal_semaphores[signal_semaphores_count] = swapchain->rendering_done[index];
 		signal_values[signal_semaphores_count++] = UINT64_MAX;
 
-		signal_semaphores[signal_semaphores_count] = forge->swapchain_rendering_done;
+		signal_semaphores[signal_semaphores_count] = forge->swapchain_blitting_done;
 		signal_values[signal_semaphores_count++] = forge->swapchain_next_signal;
 
 		signal_semaphores[signal_semaphores_count] = forge->deletion_queue->semaphore;
@@ -637,5 +645,6 @@ namespace forge
 	{
 		_forge_swapchain_frame_process(forge, forge->swapchain_frame);
 		forge_deletion_queue_flush(forge, forge->deletion_queue, false);
+		forge_descriptor_set_manager_flush(forge, forge->descriptor_set_manager);
 	}
 };

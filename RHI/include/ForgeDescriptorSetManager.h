@@ -12,6 +12,7 @@ namespace forge
 	struct ForgeShader;
 
 	static constexpr uint32_t FORGE_DESCRIPTOR_SET_ALLOCATOR_MAX_SETS = 16u;
+	static constexpr uint32_t FORGE_DESCRIPTOR_SET_ALLOCATOR_SET_MAX_AGE = 10u; // frames
 
 	struct ForgeDescriptorSet
 	{

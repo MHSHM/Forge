@@ -152,7 +152,7 @@ namespace forge
 
 		if (auto iter = allocator->recently_used.find(hash); iter != allocator->recently_used.end())
 		{
-			iter->second.last_use = 0u; // TODO: set to the current frame index
+			iter->second.last_use = forge->swapchain_next_signal;
 			return iter->second.handle;
 		}
 		else
@@ -181,7 +181,7 @@ namespace forge
 				++allocator->allocatoed_sets;
 			}
 
-			allocator->recently_used[hash] = {set, 0u}; // TODO: set to the current frame index
+			allocator->recently_used[hash] = {set, forge->swapchain_next_signal};
 			_forge_descriptor_set_update(forge, set, shader, binding_list);
 
 			return set;
@@ -223,7 +223,25 @@ namespace forge
 	void
 	forge_descriptor_set_manager_flush(Forge* forge, ForgeDescriptorSetManager* manager)
 	{
-		// TODO:
+		uint64_t value;
+		auto res = vkGetSemaphoreCounterValue(forge->device, forge->swapchain_blitting_done, &value);
+		VK_RES_CHECK(res);
+
+		for (auto& [_, allocator] : manager->allocators)
+		{
+			for (auto iter = allocator.recently_used.begin(); iter != allocator.recently_used.end();)
+			{
+				if (value > iter->second.last_use && value - iter->second.last_use >= FORGE_DESCRIPTOR_SET_ALLOCATOR_SET_MAX_AGE)
+				{
+					allocator.available.push_back(iter->second.handle);
+					allocator.recently_used.erase(iter++);
+				}
+				else
+				{
+					iter++;
+				}
+			}
+		}
 	}
 
 	void
