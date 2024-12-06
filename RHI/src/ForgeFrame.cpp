@@ -8,6 +8,7 @@
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeImage.h"
+#include "ForgeCommandBufferManager.h"
 
 namespace forge
 {
@@ -103,26 +104,6 @@ namespace forge
 	}
 
 	static bool
-	_forge_frame_common_init(Forge* forge, ForgeFrame* frame)
-	{
-		VkCommandPoolCreateInfo command_pool_info {};
-		command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		command_pool_info.queueFamilyIndex = forge->queue_family_index;
-		auto res = vkCreateCommandPool(forge->device, &command_pool_info, nullptr, &frame->command_pool);
-		VK_RES_CHECK(res);
-
-		if (res != VK_SUCCESS)
-		{
-			log_error("Failed to initialize frame's command pool");
-			return false;
-		}
-
-		frame->current_frame = 0u;
-
-		return true;
-	}
-
-	static bool
 	_forge_swapchain_frame_init(Forge* forge, ForgeSwapchainDescription swapchain_desc, ForgeFrame* frame)
 	{
 		frame->swapchain = forge_swapchain_new(forge, swapchain_desc);
@@ -133,11 +114,6 @@ namespace forge
 			return false;
 		}
 
-		if (_forge_frame_common_init(forge, frame) == false)
-		{
-			return false;
-		}
-
 		return true;
 	}
 
@@ -145,11 +121,6 @@ namespace forge
 	_forge_offscreen_frame_init(Forge* forge, ForgeImage* color, ForgeImage* depth, ForgeFrame* frame)
 	{
 		if (_forge_offscreen_frame_pass_init(forge, frame, color, depth) == false)
-		{
-			return false;
-		}
-
-		if (_forge_frame_common_init(forge, frame) == false)
 		{
 			return false;
 		}
@@ -167,7 +138,6 @@ namespace forge
 			forge_swapchain_destroy(forge, frame->swapchain);
 		}
 
-		forge_deletion_queue_push(forge, forge->deletion_queue, frame->command_pool);
 		forge_render_pass_destroy(forge, frame->pass);
 	}
 
@@ -253,14 +223,8 @@ namespace forge
 
 		auto swapchain = frame->swapchain;
 
-		// TODO: Add command buffer manager similar to descriptor set manager
-		VkCommandBufferAllocateInfo command_info {};
-		command_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		command_info.commandBufferCount = 1u;
-		command_info.commandPool = frame->command_pool;
-		command_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		res = vkAllocateCommandBuffers(forge->device, &command_info, &frame->command_buffer);
-		VK_RES_CHECK(res);
+		frame->command_buffer = forge_command_buffer_acquire(forge, forge->command_buffer_manager);
+		assert(frame->command_buffer != VK_NULL_HANDLE);
 
 		VkCommandBufferBeginInfo begin_info {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -298,6 +262,8 @@ namespace forge
 		}
 
 		vkEndCommandBuffer(command_buffer);
+
+		forge_command_buffer_release(forge, forge->command_buffer_manager, frame->command_buffer);
 	}
 
 	void

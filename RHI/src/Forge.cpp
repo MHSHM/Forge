@@ -11,6 +11,7 @@
 #include "ForgeFrame.h"
 #include "ForgeDeletionQueue.h"
 #include "ForgeDescriptorSetManager.h"
+#include "ForgeCommandBufferManager.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -326,25 +327,6 @@ namespace forge
 	}
 
 	static bool
-	_forge_command_pool_init(Forge* forge)
-	{
-		VkCommandPoolCreateInfo info{};
-		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		info.queueFamilyIndex = forge->queue_family_index;
-		info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		auto res = vkCreateCommandPool(forge->device, &info, nullptr, &forge->command_pool);
-		VK_RES_CHECK(res);
-
-		if (res != VK_SUCCESS)
-		{
-			log_error("Failed to create the global command pool");
-			return false;
-		}
-
-		return true;
-	}
-
-	static bool
 	_forge_staging_buffer_init(Forge* forge)
 	{
 		ForgeBufferDescription desc {};
@@ -363,7 +345,7 @@ namespace forge
 		VkCommandBufferAllocateInfo info {};
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		info.commandBufferCount = 1u;
-		info.commandPool = forge->command_pool;
+		info.commandPool = forge->command_buffer_manager->pool;
 		auto res = vkAllocateCommandBuffers(forge->device, &info, &forge->staging_command_buffer);
 		VK_RES_CHECK(res);
 
@@ -419,8 +401,11 @@ namespace forge
 			return false;
 		}
 
-		if (_forge_command_pool_init(forge) == false)
+		// FIXME: Need to be initialized before the staging command buffer
+		forge->command_buffer_manager = forge_command_buffer_manager_new(forge);
+		if (forge->command_buffer_manager == nullptr)
 		{
+			log_error("Failed to initialize the command buffer manager");
 			forge_destroy(forge);
 			return false;
 		}
@@ -441,6 +426,7 @@ namespace forge
 		if (forge->deletion_queue == nullptr)
 		{
 			log_error("Failed to initialize the deletion queue");
+			forge_destroy(forge);
 			return false;
 		}
 
@@ -448,6 +434,7 @@ namespace forge
 		if (forge->descriptor_set_manager == nullptr)
 		{
 			log_error("Failed to initialize the descriptor set manager");
+			forge_destroy(forge);
 			return false;
 		}
 
@@ -466,6 +453,7 @@ namespace forge
 		if (res != VK_SUCCESS)
 		{
 			log_error("Failed to initialize swapchain's rendering done semaphore");
+			forge_destroy(forge);
 			return false;
 		}
 
@@ -475,6 +463,7 @@ namespace forge
 		if (res != VK_SUCCESS)
 		{
 			log_error("Failed to initialize offscreen rendering done semaphore");
+			forge_destroy(forge);
 			return false;
 		}
 
@@ -507,14 +496,19 @@ namespace forge
 			forge->pfn_vkDestroyDebugUtilsMessengerEXT(forge->instance, forge->debug_messenger, nullptr);
 		}
 
+		if (forge->command_buffer_manager)
+		{
+			forge_command_buffer_manager_destroy(forge, forge->command_buffer_manager);
+		}
+
+		if (forge->descriptor_set_manager)
+		{
+			forge_descriptor_set_manager_destroy(forge, forge->descriptor_set_manager);
+		}
+
 		if (forge->staging_buffer)
 		{
 			forge_buffer_destroy(forge, forge->staging_buffer);
-		}
-
-		if (forge->command_pool)
-		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, forge->command_pool);
 		}
 
 		if (forge->uniform_memory)
@@ -646,5 +640,6 @@ namespace forge
 		_forge_swapchain_frame_process(forge, forge->swapchain_frame);
 		forge_deletion_queue_flush(forge, forge->deletion_queue, false);
 		forge_descriptor_set_manager_flush(forge, forge->descriptor_set_manager);
+		forge_command_buffer_manager_flush(forge, forge->command_buffer_manager);
 	}
 };

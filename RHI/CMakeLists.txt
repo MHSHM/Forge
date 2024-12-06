@@ -38,6 +38,7 @@ set(RHI_SOURCES
     src/ForgeDescriptorSetManager.cpp
     src/ForgeDynamicMemory.cpp
     src/ForgeFrame.cpp
+    src/ForgeCommandBufferManager.cpp
     # Add other RHI source files here
 )
 
@@ -56,6 +57,7 @@ set(RHI_HEADERS
     include/ForgeDescriptorSetManager.h
     include/ForgeDynamicMemory.h
     include/ForgeFrame.h
+    include/ForgeCommandBufferManager.h
     # Add other public headers here
 )
 

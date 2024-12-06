@@ -21,7 +21,6 @@ namespace forge
 	{
 		ForgeSwapchain* swapchain;
 		ForgeRenderPass* pass;
-		VkCommandPool command_pool;
 		VkCommandBuffer command_buffer;
 		uint32_t current_frame;
 	};
