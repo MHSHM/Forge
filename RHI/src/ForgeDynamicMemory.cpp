@@ -9,7 +9,41 @@ namespace forge
 	static uint32_t
 	_forge_dynamic_memory_acquire_available_segment(Forge* forge, ForgeDynamicMemory* memory)
 	{
-		// TODO:
+		auto current = memory->current;
+		memory->release_signal[current] = forge->swapchain_next_signal;
+
+		uint64_t value;
+		auto res = vkGetSemaphoreCounterValue(forge->device, forge->swapchain_blitting_done, &value);
+		VK_RES_CHECK(res);
+
+		uint32_t segment = UINT32_MAX;
+
+		for (uint32_t i = 0; i < FORGE_DYNAMIC_MEMORY_MAX_SEGMENTTS; ++i)
+		{
+			if (value >= memory->release_signal[i])
+			{
+				segment = i;
+				break;
+			}
+		}
+
+		if (segment == UINT32_MAX)
+		{
+			VkSemaphoreWaitInfo wait_info{};
+			wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+			wait_info.semaphoreCount = 1;
+			wait_info.pSemaphores = &forge->swapchain_blitting_done;
+			wait_info.pValues = &forge->swapchain_next_signal;
+			auto res = vkWaitSemaphores(forge->device, &wait_info, UINT64_MAX);
+			VK_RES_CHECK(res);
+
+			segment = 0;
+		}
+
+		memory->current = segment;
+		memory->cursor[segment] = 0;
+
+		return segment;
 	}
 
 	static bool
@@ -72,8 +106,7 @@ namespace forge
 		size = _forge_align_up(size, alignment);
 		if ((memory->cursor[current] + size) > memory->segment_size)
 		{
-			// TODO: Handle running out of memory
-			log_warning("Dynamic memory has run out of memory, potential memory ovwerwrite");
+			current = _forge_dynamic_memory_acquire_available_segment(forge, memory);
 		}
 
 		VkDeviceSize offset = _forge_align_up(current * memory->segment_size, alignment);

@@ -2,13 +2,13 @@
 #include "ForgeFrame.h"
 #include "ForgeSwapchain.h"
 #include "ForgeRenderPass.h"
-#include "ForgeDeletionQueue.h"
-#include "ForgeDescriptorSetManager.h"
-#include "ForgeDynamicMemory.h"
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeImage.h"
 #include "ForgeCommandBufferManager.h"
+#include "ForgeShader.h"
+#include "ForgeBindingList.h"
+#include "ForgeDescriptorSetManager.h"
 
 namespace forge
 {
@@ -264,6 +264,14 @@ namespace forge
 		vkEndCommandBuffer(command_buffer);
 
 		forge_command_buffer_release(forge, forge->command_buffer_manager, frame->command_buffer);
+	}
+
+	void
+	forge_frame_bind_resources(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list)
+	{
+		auto descriptor_set = forge_descriptor_set_manager_set_get(forge, forge->descriptor_set_manager, shader, binding_list);
+
+		
 	}
 
 	void

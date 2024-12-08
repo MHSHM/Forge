@@ -12,8 +12,8 @@ namespace forge
 	struct ForgeImage;
 	struct ForgeRenderPass;
 	struct ForgeSwapchain;
-	struct ForgeDescriptorSetManager;
-	struct ForgeDynamicMemory;
+	struct ForgeBindingList;
+	struct ForgeShader;
 
 	static constexpr uint32_t FORGE_FRAME_MAX_UNIFORM_MEMORY = 16 << 20;
 
@@ -36,6 +36,9 @@ namespace forge
 
 	void
 	forge_frame_end(Forge* forge, ForgeFrame* frame);
+
+	void
+	forge_frame_bind_resources(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list);
 
 	void
 	forge_frame_destroy(Forge* forge, ForgeFrame* frame);
