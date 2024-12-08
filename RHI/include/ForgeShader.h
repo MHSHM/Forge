@@ -76,7 +76,8 @@ namespace forge
 		VkDescriptorSetLayout descriptor_set_layout;
 		VkShaderModule modules[FORGE_SHADER_STAGE_COUNT];
 		shaderc::SpvCompilationResult spirv[FORGE_SHADER_STAGE_COUNT];
-		uint64_t uniform_offsets[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
+		uint32_t uniform_offsets[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
+		uint32_t uniforms_count;
 		ForgeShaderDescription description;
 		ForgePipelineDescription pipeline_description;
 	};

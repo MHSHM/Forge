@@ -363,6 +363,8 @@ namespace forge
 			uniform.name = spv_uniform.name;
 			uniform.size = (uint32_t)compiler.get_declared_struct_size(compiler.get_type(spv_uniform.type_id));
 			uniform.stages = _forge_shader_stage_vk_stage(stage);
+
+			shader->uniforms_count++;
 		}
 	}
 

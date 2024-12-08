@@ -38,7 +38,7 @@ namespace forge
 	forge_descriptor_set_manager_new(Forge* forge);
 
 	VkDescriptorSet
-	forge_descriptor_set_manager_set_get(Forge* forge, ForgeDescriptorSetManager* manager, ForgeShader* shader, ForgeBindingList* binding_list);
+	forge_descriptor_set_acquire(Forge* forge, ForgeDescriptorSetManager* manager, ForgeShader* shader, ForgeBindingList* binding_list);
 
 	void
 	forge_descriptor_set_manager_flush(Forge* forge, ForgeDescriptorSetManager* manager);

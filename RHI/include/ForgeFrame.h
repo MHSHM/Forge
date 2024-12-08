@@ -22,6 +22,7 @@ namespace forge
 		ForgeSwapchain* swapchain;
 		ForgeRenderPass* pass;
 		VkCommandBuffer command_buffer;
+		VkDescriptorSet set;
 		uint32_t current_frame;
 	};
 
@@ -31,8 +32,14 @@ namespace forge
 	ForgeFrame*
 	forge_frame_new(Forge* forge, ForgeSwapchainDescription swapchain_desc);
 
+	void
+	forge_frame_prepare(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list);
+
 	bool
 	forge_frame_begin(Forge* forge, ForgeFrame* frame);
+
+	void
+	forge_frame_draw(Forge* forge, ForgeFrame* frame, uint32_t vertex_count);
 
 	void
 	forge_frame_end(Forge* forge, ForgeFrame* frame);

@@ -206,7 +206,7 @@ namespace forge
 	}
 
 	VkDescriptorSet
-	forge_descriptor_set_manager_set_get(Forge* forge, ForgeDescriptorSetManager* manager, ForgeShader* shader, ForgeBindingList* binding_list)
+	forge_descriptor_set_acquire(Forge* forge, ForgeDescriptorSetManager* manager, ForgeShader* shader, ForgeBindingList* binding_list)
 	{
 		if (auto iter = manager->allocators.find(shader->descriptor_set_layout); iter != manager->allocators.end())
 		{

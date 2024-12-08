@@ -9,6 +9,7 @@
 #include "ForgeShader.h"
 #include "ForgeBindingList.h"
 #include "ForgeDescriptorSetManager.h"
+#include "ForgeBuffer.h"
 
 namespace forge
 {
@@ -216,15 +217,33 @@ namespace forge
 		return frame;
 	}
 
+	void
+	forge_frame_prepare(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list)
+	{
+		frame->command_buffer = forge_command_buffer_acquire(forge, forge->command_buffer_manager);
+		frame->set = forge_descriptor_set_acquire(forge, forge->descriptor_set_manager, shader, binding_list);
+		assert(frame->command_buffer != VK_NULL_HANDLE);
+		assert(frame->set != VK_NULL_HANDLE);
+
+		for (uint32_t i = 0; i < FORGE_MAX_IMAGE_BINDINGS; ++i)
+		{
+			auto image = binding_list->images[i];
+			if (image == nullptr)
+				continue;
+
+			if (image->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+			{
+				forge_image_layout_transition(forge, frame->command_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image);
+			}
+		}
+	}
+
 	bool
 	forge_frame_begin(Forge* forge, ForgeFrame* frame)
 	{
 		VkResult res;
 
 		auto swapchain = frame->swapchain;
-
-		frame->command_buffer = forge_command_buffer_acquire(forge, forge->command_buffer_manager);
-		assert(frame->command_buffer != VK_NULL_HANDLE);
 
 		VkCommandBufferBeginInfo begin_info {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -244,6 +263,14 @@ namespace forge
 		}
 
 		return true;
+	}
+
+	void
+	forge_frame_draw(Forge* forge, ForgeFrame* frame, uint32_t vertex_count)
+	{
+		auto command_buffer = frame->command_buffer;
+
+		vkCmdDraw(command_buffer, vertex_count, 1u, 0u, 0u);
 	}
 
 	void
@@ -269,9 +296,26 @@ namespace forge
 	void
 	forge_frame_bind_resources(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list)
 	{
-		auto descriptor_set = forge_descriptor_set_manager_set_get(forge, forge->descriptor_set_manager, shader, binding_list);
+		auto command_buffer = frame->command_buffer;
+		auto set = frame->set;
 
-		
+		for (auto& vertex_buffer : binding_list->vertex_buffers)
+		{
+			VkDeviceSize offset{};
+
+			if (vertex_buffer)
+			{
+				vkCmdBindVertexBuffers(command_buffer, 0u, 1u, &vertex_buffer->handle, &offset);
+			}
+		}
+
+		if (binding_list->index_buffer)
+		{
+			vkCmdBindIndexBuffer(command_buffer, binding_list->index_buffer->handle, 0u, VK_INDEX_TYPE_UINT32);
+		}
+
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipeline_layout, 0u, 1u, &set, shader->uniforms_count, shader->uniform_offsets);
+		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipeline);
 	}
 
 	void
