@@ -58,7 +58,7 @@ namespace forge
 		VkBool32 depth_write = VK_TRUE;
 		VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
 		VkPipelineColorBlendAttachmentState blend_desc[FORGE_RENDER_PASS_MAX_ATTACHMENTS];
-		ForgeRenderPass* pass; // Doesn't own it
+		VkRenderPass pass;
 	};
 
 	struct ForgeShaderDescription
@@ -81,6 +81,9 @@ namespace forge
 		ForgeShaderDescription description;
 		ForgePipelineDescription pipeline_description;
 	};
+
+	bool
+	_forge_shader_pipeline_init(Forge* forge, ForgeShader* shader, VkRenderPass pass);
 
 	ForgeShader*
 	forge_shader_new(Forge* forge, ForgePipelineDescription pipeline_description, const char* name, const char* shader_source_code);

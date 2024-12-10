@@ -24,6 +24,7 @@ namespace forge
 		VkCommandBuffer command_buffer;
 		VkDescriptorSet set;
 		uint32_t current_frame;
+		bool pass_updated;
 	};
 
 	ForgeFrame*

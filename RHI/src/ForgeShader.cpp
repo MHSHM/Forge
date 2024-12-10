@@ -61,9 +61,14 @@ namespace forge
 		return (VkShaderStageFlagBits)0u;
 	}
 
-	static bool
-	_forge_shader_pipeline_init(Forge* forge, ForgeShader* shader)
+	bool
+	_forge_shader_pipeline_init(Forge* forge, ForgeShader* shader, VkRenderPass pass)
 	{
+		if (pass == shader->pipeline_description.pass)
+		{
+			return true;
+		}
+
 		VkResult res;
 
 		const auto& pipeline_description = shader->pipeline_description;
@@ -205,7 +210,7 @@ namespace forge
 		pipeline_create_info.pDynamicState = &dynamic_state;
 		pipeline_create_info.pViewportState = &viewport_state;
 		pipeline_create_info.layout = shader->pipeline_layout;
-		pipeline_create_info.renderPass = pipeline_description.pass->handle;
+		pipeline_create_info.renderPass = pass;
 		pipeline_create_info.subpass = 0;
 		res = vkCreateGraphicsPipelines(forge->device, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &shader->pipeline);
 		VK_RES_CHECK(res);
@@ -216,6 +221,8 @@ namespace forge
 		}
 
 		_forge_debug_obj_name_set(forge, (uint64_t)shader->pipeline, VK_OBJECT_TYPE_PIPELINE, shader->description.name.c_str());
+
+		shader->pipeline_description.pass = pass;
 
 		return true;
 	}
@@ -457,11 +464,6 @@ namespace forge
 		}
 
 		if (_forge_shader_pipeline_layout_init(forge, shader) == false)
-		{
-			return false;
-		}
-
-		if (_forge_shader_pipeline_init(forge, shader) == false)
 		{
 			return false;
 		}

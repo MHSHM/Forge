@@ -5,11 +5,12 @@
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeImage.h"
-#include "ForgeCommandBufferManager.h"
+#include "ForgeBuffer.h"
 #include "ForgeShader.h"
+#include "ForgeCommandBufferManager.h"
 #include "ForgeBindingList.h"
 #include "ForgeDescriptorSetManager.h"
-#include "ForgeBuffer.h"
+#include "ForgeDynamicMemory.h"
 
 namespace forge
 {
@@ -236,6 +237,14 @@ namespace forge
 				forge_image_layout_transition(forge, frame->command_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image);
 			}
 		}
+
+		if (frame->swapchain)
+		{
+			forge_swapchain_update(forge, frame->swapchain);
+			_forge_swapchain_frame_pass_update(forge, frame);
+		}
+
+		_forge_shader_pipeline_init(forge, shader, frame->pass->handle);
 	}
 
 	bool
@@ -243,24 +252,27 @@ namespace forge
 	{
 		VkResult res;
 
-		auto swapchain = frame->swapchain;
-
 		VkCommandBufferBeginInfo begin_info {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		res = vkBeginCommandBuffer(frame->command_buffer, &begin_info);
 		VK_RES_CHECK(res);
 
-		if (frame->swapchain)
-		{
-			forge_swapchain_update(forge, swapchain);
-			_forge_swapchain_frame_pass_update(forge, frame);
-			forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
-		}
-		else
-		{
-			forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
-		}
+		forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
+
+		VkViewport viewport {};
+		viewport.width = (float)frame->pass->width;
+		viewport.height = (float)frame->pass->height;
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		vkCmdSetViewport(frame->command_buffer, 0u, 1u, &viewport);
+
+		VkRect2D scissor {};
+		scissor.extent = {frame->pass->width, frame->pass->height};
+		scissor.offset = {0u, 0u};
+		vkCmdSetScissor(frame->command_buffer, 0u, 1u, &scissor);
 
 		return true;
 	}
@@ -299,10 +311,19 @@ namespace forge
 		auto command_buffer = frame->command_buffer;
 		auto set = frame->set;
 
+		for (uint32_t i = 0; i < FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS; ++i)
+		{
+			auto uniform = binding_list->uniforms[i];
+			if (uniform.first == 0)
+				continue;
+
+			shader->uniform_offsets[i] = forge_dynamic_memory_write(forge, forge->uniform_memory, uniform.first, forge->physical_device_limits.minUniformBufferOffsetAlignment, uniform.second);
+		}
+
+		VkDeviceSize offset{};
+
 		for (auto& vertex_buffer : binding_list->vertex_buffers)
 		{
-			VkDeviceSize offset{};
-
 			if (vertex_buffer)
 			{
 				vkCmdBindVertexBuffers(command_buffer, 0u, 1u, &vertex_buffer->handle, &offset);
