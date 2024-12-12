@@ -105,8 +105,8 @@ int main()
 	auto shader = forge::forge_shader_new(forge, pipeline_desc, "Shader", shader_code.c_str());
 
 	float model_mat[] = {
-		1.0f, 0.0f, 0.0f, 1.0f,
-		0.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f
 	};
