@@ -28,7 +28,7 @@ namespace forge
 	forge_command_buffer_manager_destroy(Forge* forge, ForgeCommandBufferManager* manager);
 
 	VkCommandBuffer
-	forge_command_buffer_acquire(Forge* forge, ForgeCommandBufferManager* manager);
+	forge_command_buffer_acquire(Forge* forge, ForgeCommandBufferManager* manager, bool begin);
 
 	void
 	forge_command_buffer_release(Forge* forge, ForgeCommandBufferManager* manager, VkCommandBuffer command_buffer);

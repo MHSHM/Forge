@@ -79,6 +79,8 @@ int main()
 	desc.window = hwnd;
 	auto swapchain_frame = forge::forge_frame_new(forge, desc);
 
+	auto offscreen_frame = forge::forge_frame_new(forge);
+
 	float vertices[] = {
 		-0.5f, -0.5f, 0.0f,
 		-0.5f,  0.5f, 0.0f,
@@ -88,6 +90,15 @@ int main()
 		 0.5f, -0.5f, 0.0f
 	};
 
+	float full_screen_vertices[] = {
+		-1.0f, -1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		 1.0f, -1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		 1.0f,  1.0f, 0.0f,
+		 1.0f, -1.0f, 0.0f
+	};
+
 	forge::ForgeBufferDescription vertex_buffer_desc {};
 	vertex_buffer_desc.name = "Vertex buffer";
 	vertex_buffer_desc.size = sizeof(vertices);
@@ -95,6 +106,9 @@ int main()
 	vertex_buffer_desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	auto vertex_buffer = forge::forge_buffer_new(forge, vertex_buffer_desc);
 	forge_buffer_write(forge, vertex_buffer, vertices, sizeof(vertices));
+
+	auto vertex_buffer_full_screen = forge::forge_buffer_new(forge, vertex_buffer_desc);
+	forge::forge_buffer_write(forge, vertex_buffer_full_screen, full_screen_vertices, sizeof(full_screen_vertices));
 
 	forge::ForgePipelineDescription pipeline_desc {};
 	pipeline_desc.bindings[0].binding = 0u;
@@ -113,7 +127,10 @@ int main()
 												 VK_COLOR_COMPONENT_A_BIT;
 
 	auto shader_code = _shader_code_read("shader.glsl");
+	auto shader_code_compose = _shader_code_read("shader_compose.glsl");
+
 	auto shader = forge::forge_shader_new(forge, pipeline_desc, "Shader", shader_code.c_str());
+	auto shader_compose = forge::forge_shader_new(forge, pipeline_desc, "Shader compose", shader_code_compose.c_str());
 
 	float model_mat[] = {
 		1.0f, 0.0f, 0.0f, 0.0f,
@@ -124,13 +141,25 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		forge::ForgeBindingList binding_list {};
-		forge::forge_binding_list_vertex_buffer_bind(forge, &binding_list, shader, 0u, vertex_buffer);
-		forge::forge_binding_list_uniform_write(forge, &binding_list, shader, 0u, {sizeof(model_mat), model_mat});
+		forge::ForgeBindingList offscreen_binding_list{};
+		forge::forge_binding_list_vertex_buffer_bind(forge, &offscreen_binding_list, shader, 0u, vertex_buffer);
+		forge::forge_binding_list_uniform_write(forge, &offscreen_binding_list, shader, 0u, {sizeof(model_mat), model_mat});
 
-		forge::forge_frame_prepare(forge, swapchain_frame, shader, &binding_list, width, height);
+		forge::forge_frame_prepare(forge, offscreen_frame, shader, &offscreen_binding_list, width, height);
+		forge::forge_frame_begin(forge, offscreen_frame);
+		forge::forge_frame_bind_resources(forge, offscreen_frame, shader, &offscreen_binding_list);
+		forge::forge_frame_draw(forge, offscreen_frame, 6u);
+		forge::forge_frame_end(forge, offscreen_frame);
+
+		auto color = forge::forge_frame_color_attachment(forge, offscreen_frame);
+
+		forge::ForgeBindingList swapchain_binding_list {};
+		forge::forge_binding_list_vertex_buffer_bind(forge, &swapchain_binding_list, shader_compose, 0u, vertex_buffer);
+		forge::forge_binding_list_image_bind(forge, &swapchain_binding_list, shader_compose, 0u, color);
+
+		forge::forge_frame_prepare(forge, swapchain_frame, shader_compose, &swapchain_binding_list, width, height);
 		forge::forge_frame_begin(forge, swapchain_frame);
-		forge::forge_frame_bind_resources(forge, swapchain_frame, shader, &binding_list);
+		forge::forge_frame_bind_resources(forge, swapchain_frame, shader_compose, &offscreen_binding_list);
 		forge::forge_frame_draw(forge, swapchain_frame, 6u);
 		forge::forge_frame_end(forge, swapchain_frame);
 

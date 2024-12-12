@@ -531,6 +531,12 @@ namespace forge
 	}
 
 	static void
+	_forge_offscreen_frames_process(Forge* forge)
+	{
+		// TODO:
+	}
+
+	static void
 	_forge_swapchain_frame_process(Forge* forge, ForgeFrame* frame)
 	{
 		if (frame == nullptr)
@@ -637,6 +643,7 @@ namespace forge
 	void
 	forge_flush(Forge* forge)
 	{
+		_forge_offscreen_frames_process(forge);
 		_forge_swapchain_frame_process(forge, forge->swapchain_frame);
 		forge_deletion_queue_flush(forge, forge->deletion_queue, false);
 		forge_descriptor_set_manager_flush(forge, forge->descriptor_set_manager);

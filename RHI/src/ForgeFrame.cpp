@@ -168,7 +168,7 @@ namespace forge
 	void
 	forge_frame_prepare(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list, uint32_t width, uint32_t height)
 	{
-		frame->command_buffer = forge_command_buffer_acquire(forge, forge->command_buffer_manager);
+		frame->command_buffer = forge_command_buffer_acquire(forge, forge->command_buffer_manager, true);
 		frame->set = forge_descriptor_set_acquire(forge, forge->descriptor_set_manager, shader, binding_list);
 
 		for (uint32_t i = 0; i < FORGE_MAX_IMAGE_BINDINGS; ++i)
@@ -201,14 +201,6 @@ namespace forge
 	bool
 	forge_frame_begin(Forge* forge, ForgeFrame* frame)
 	{
-		VkResult res;
-
-		VkCommandBufferBeginInfo begin_info {};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		res = vkBeginCommandBuffer(frame->command_buffer, &begin_info);
-		VK_RES_CHECK(res);
-
 		forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
 
 		return true;
@@ -240,6 +232,24 @@ namespace forge
 		vkEndCommandBuffer(command_buffer);
 
 		forge_command_buffer_release(forge, forge->command_buffer_manager, frame->command_buffer);
+	}
+
+	ForgeImage*
+	forge_frame_color_attachment(Forge* forge, ForgeFrame* frame)
+	{
+		auto pass = frame->pass;
+		assert(pass);
+
+		return pass->description.colors[0].image;
+	}
+
+	ForgeImage*
+	forge_frame_depth_attachment(Forge* forge, ForgeFrame* frame)
+	{
+		auto pass = frame->pass;
+		assert(pass);
+
+		return pass->description.depth.image;
 	}
 
 	void

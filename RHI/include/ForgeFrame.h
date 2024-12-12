@@ -38,7 +38,7 @@ namespace forge
 	};
 
 	ForgeFrame*
-	forge_frame_new(Forge* forge, ForgeImageDescription color, ForgeImageDescription depth);
+	forge_frame_new(Forge* forge);
 
 	ForgeFrame*
 	forge_frame_new(Forge* forge, ForgeSwapchainDescription swapchain_desc);
@@ -54,6 +54,12 @@ namespace forge
 
 	void
 	forge_frame_end(Forge* forge, ForgeFrame* frame);
+
+	ForgeImage*
+	forge_frame_color_attachment(Forge* forge, ForgeFrame* frame);
+
+	ForgeImage*
+	forge_frame_depth_attachment(Forge* forge, ForgeFrame* frame);
 
 	void
 	forge_frame_bind_resources(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list);

@@ -36,7 +36,7 @@ namespace forge
 	}
 
 	VkCommandBuffer
-	forge_command_buffer_acquire(Forge* forge, ForgeCommandBufferManager* manager)
+	forge_command_buffer_acquire(Forge* forge, ForgeCommandBufferManager* manager, bool begin)
 	{
 		VkCommandBuffer command_buffer {};
 
@@ -53,6 +53,15 @@ namespace forge
 			alloc_info.commandPool = manager->pool;
 			alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			auto res = vkAllocateCommandBuffers(forge->device, &alloc_info, &command_buffer);
+			VK_RES_CHECK(res);
+		}
+
+		if (begin)
+		{
+			VkCommandBufferBeginInfo begin_info{};
+			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			auto res = vkBeginCommandBuffer(command_buffer, &begin_info);
 			VK_RES_CHECK(res);
 		}
 
