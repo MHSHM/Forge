@@ -58,7 +58,6 @@ namespace forge
 		VkBool32 depth_write = VK_TRUE;
 		VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
 		VkPipelineColorBlendAttachmentState blend_desc[FORGE_RENDER_PASS_MAX_ATTACHMENTS];
-		VkRenderPass pass;
 	};
 
 	struct ForgeShaderDescription
@@ -75,6 +74,7 @@ namespace forge
 		VkPipelineLayout pipeline_layout;
 		VkDescriptorSetLayout descriptor_set_layout;
 		VkShaderModule modules[FORGE_SHADER_STAGE_COUNT];
+		VkRenderPass active_pass;
 		shaderc::SpvCompilationResult spirv[FORGE_SHADER_STAGE_COUNT];
 		uint32_t uniform_offsets[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
 		uint32_t uniforms_count;

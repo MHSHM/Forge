@@ -125,8 +125,10 @@ int main()
 		glfwPollEvents();
 	}
 
-	forge_frame_destroy(forge, swapchain_frame);
-	forge_destroy(forge);
+	forge::forge_buffer_destroy(forge, vertex_buffer);
+	forge::forge_shader_destroy(forge, shader);
+	forge::forge_frame_destroy(forge, swapchain_frame);
+	forge::forge_destroy(forge);
 
 	return 0;
 }

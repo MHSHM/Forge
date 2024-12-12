@@ -184,6 +184,42 @@ namespace forge
 		else {static_assert(std::is_same_v<T, T> == false); return VK_OBJECT_TYPE_MAX_ENUM;}
 	}
 
+	inline static const char*
+	_forge_object_type_str(VkObjectType type)
+	{
+		switch (type)
+		{
+		case VK_OBJECT_TYPE_INSTANCE: return "INSTANCE";
+		case VK_OBJECT_TYPE_PHYSICAL_DEVICE: return "PHYSICAL DEVICE";
+		case VK_OBJECT_TYPE_DEVICE: return "LOGICAL DEVICE";
+		case VK_OBJECT_TYPE_QUEUE: return "QUEUE";
+		case VK_OBJECT_TYPE_SEMAPHORE: return "SEMAPHORE";
+		case VK_OBJECT_TYPE_COMMAND_BUFFER: return "COMMAND BUFFER";
+		case VK_OBJECT_TYPE_FENCE: return "FENCE";
+		case VK_OBJECT_TYPE_DEVICE_MEMORY: return "DEVICE MEMORY";
+		case VK_OBJECT_TYPE_BUFFER: return "BUFFER";
+		case VK_OBJECT_TYPE_IMAGE: return "IMAGE";
+		case VK_OBJECT_TYPE_EVENT: return "EVENT";
+		case VK_OBJECT_TYPE_IMAGE_VIEW: return "IMAGE VIEW";
+		case VK_OBJECT_TYPE_SHADER_MODULE: return "SHADER MODULE";
+		case VK_OBJECT_TYPE_PIPELINE_LAYOUT: return "PIPELINE LAYOUT";
+		case VK_OBJECT_TYPE_RENDER_PASS: return "RENDER PASS";
+		case VK_OBJECT_TYPE_PIPELINE: return "PIPELINE";
+		case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT: return "DESCRIPTOR SET LAYOUT";
+		case VK_OBJECT_TYPE_SAMPLER: return "SAMPLER";
+		case VK_OBJECT_TYPE_DESCRIPTOR_POOL: return "DESCRIPTOR POOL";
+		case VK_OBJECT_TYPE_DESCRIPTOR_SET: return "DESCRIPTOR SET";
+		case VK_OBJECT_TYPE_FRAMEBUFFER: return "FRAMEBUFFER";
+		case VK_OBJECT_TYPE_COMMAND_POOL: return "COMMAND POOL";
+		case VK_OBJECT_TYPE_SURFACE_KHR: return "SURFACE";
+		case VK_OBJECT_TYPE_SWAPCHAIN_KHR: return "SWACHAIN";
+		case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT: return "DEBUG UTILS MESSENGER";
+		default:
+			log_warning("The object type is not handled");
+			return "";
+		}
+	}
+
 	static const char*
 	_forge_result_to_str(VkResult res)
 	{

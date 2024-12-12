@@ -468,7 +468,7 @@ namespace forge
 	void
 	forge_image_layout_transition(Forge* forge, VkCommandBuffer command_buffer, VkImageLayout new_layout, ForgeImage* image)
 	{
-		if (image->layout == new_layout){ return; }
+		if (image->layout == new_layout){return;}
 
 		_forge_image_layout_transition(forge, command_buffer, new_layout, image);
 	}

@@ -279,6 +279,20 @@ namespace forge
 		render_pass_begin_info.clearValueCount = attachments_count;
 		render_pass_begin_info.pClearValues = clear_values;
 		vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+		VkViewport viewport {};
+		viewport.width = (float)render_pass->width;
+		viewport.height = (float)render_pass->height;
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		vkCmdSetViewport(command_buffer, 0u, 1u, &viewport);
+
+		VkRect2D scissor {};
+		scissor.extent = {render_pass->width, render_pass->height};
+		scissor.offset = {0u, 0u};
+		vkCmdSetScissor(command_buffer, 0u, 1u, &scissor);
 	}
 
 	void

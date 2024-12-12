@@ -64,11 +64,6 @@ namespace forge
 	bool
 	_forge_shader_pipeline_init(Forge* forge, ForgeShader* shader, VkRenderPass pass)
 	{
-		if (pass == shader->pipeline_description.pass)
-		{
-			return true;
-		}
-
 		VkResult res;
 
 		const auto& pipeline_description = shader->pipeline_description;
@@ -222,7 +217,7 @@ namespace forge
 
 		_forge_debug_obj_name_set(forge, (uint64_t)shader->pipeline, VK_OBJECT_TYPE_PIPELINE, shader->description.name.c_str());
 
-		shader->pipeline_description.pass = pass;
+		shader->active_pass = pass;
 
 		return true;
 	}

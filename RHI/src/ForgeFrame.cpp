@@ -7,18 +7,17 @@
 #include "ForgeImage.h"
 #include "ForgeBuffer.h"
 #include "ForgeShader.h"
-#include "ForgeCommandBufferManager.h"
 #include "ForgeBindingList.h"
+#include "ForgeCommandBufferManager.h"
 #include "ForgeDescriptorSetManager.h"
 #include "ForgeDynamicMemory.h"
+#include "ForgeDeletionQueue.h"
 
 namespace forge
 {
 	static bool
 	_forge_frame_pass_init(Forge* forge, ForgeFrame* frame, ForgeImage* color, ForgeImage* depth)
 	{
-		auto color_final_layout = frame->swapchain ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
 		ForgeAttachmentDescription color_attachment_desc {};
 		color_attachment_desc.image = color;
 		color_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR; // TODO: This should be provided by the user
@@ -100,12 +99,6 @@ namespace forge
 	}
 
 	static bool
-	_forge_offscreen_frame_pass_init(Forge* forge, ForgeFrame* frame, ForgeImage* color, ForgeImage* depth)
-	{
-		return _forge_frame_pass_init(forge, frame, color, depth);
-	}
-
-	static bool
 	_forge_swapchain_frame_init(Forge* forge, ForgeSwapchainDescription swapchain_desc, ForgeFrame* frame)
 	{
 		frame->swapchain = forge_swapchain_new(forge, swapchain_desc);
@@ -122,7 +115,7 @@ namespace forge
 	static bool
 	_forge_offscreen_frame_init(Forge* forge, ForgeImage* color, ForgeImage* depth, ForgeFrame* frame)
 	{
-		if (_forge_offscreen_frame_pass_init(forge, frame, color, depth) == false)
+		if (_forge_frame_pass_init(forge, frame, color, depth) == false)
 		{
 			return false;
 		}
@@ -151,7 +144,6 @@ namespace forge
 		auto swapchain = frame->swapchain;
 		auto command_buffer = frame->command_buffer;
 		auto image_available = swapchain->image_available[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
-		auto rendering_done = swapchain->rendering_done[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		auto fence = swapchain->fence[swapchain->frame_index % FORGE_SWAPCHIAN_INFLIGH_FRAMES];
 		auto extent = swapchain->description.extent;
 
@@ -165,6 +157,7 @@ namespace forge
 		VK_RES_CHECK(res);
 
 		auto src_image = frame->pass->description.colors[0].image;
+
 		ForgeImage dst_image {};
 		dst_image.handle = swapchain->images[swapchain->image_index];
 		dst_image.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -223,8 +216,6 @@ namespace forge
 	{
 		frame->command_buffer = forge_command_buffer_acquire(forge, forge->command_buffer_manager);
 		frame->set = forge_descriptor_set_acquire(forge, forge->descriptor_set_manager, shader, binding_list);
-		assert(frame->command_buffer != VK_NULL_HANDLE);
-		assert(frame->set != VK_NULL_HANDLE);
 
 		for (uint32_t i = 0; i < FORGE_MAX_IMAGE_BINDINGS; ++i)
 		{
@@ -232,10 +223,7 @@ namespace forge
 			if (image == nullptr)
 				continue;
 
-			if (image->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-			{
-				forge_image_layout_transition(forge, frame->command_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image);
-			}
+			forge_image_layout_transition(forge, frame->command_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image);
 		}
 
 		if (frame->swapchain)
@@ -244,7 +232,15 @@ namespace forge
 			_forge_swapchain_frame_pass_update(forge, frame);
 		}
 
-		_forge_shader_pipeline_init(forge, shader, frame->pass->handle);
+		if (frame->pass->handle != shader->active_pass)
+		{
+			if (shader->pipeline != VK_NULL_HANDLE)
+			{
+				forge_deletion_queue_push(forge, forge->deletion_queue, shader->pipeline);
+			}
+
+			_forge_shader_pipeline_init(forge, shader, frame->pass->handle);
+		}
 	}
 
 	bool
@@ -259,20 +255,6 @@ namespace forge
 		VK_RES_CHECK(res);
 
 		forge_render_pass_begin(forge, frame->command_buffer, frame->pass);
-
-		VkViewport viewport {};
-		viewport.width = (float)frame->pass->width;
-		viewport.height = (float)frame->pass->height;
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-		vkCmdSetViewport(frame->command_buffer, 0u, 1u, &viewport);
-
-		VkRect2D scissor {};
-		scissor.extent = {frame->pass->width, frame->pass->height};
-		scissor.offset = {0u, 0u};
-		vkCmdSetScissor(frame->command_buffer, 0u, 1u, &scissor);
 
 		return true;
 	}
