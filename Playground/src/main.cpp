@@ -168,8 +168,11 @@ int main()
 		glfwPollEvents();
 	}
 
+	forge::forge_buffer_destroy(forge, vertex_buffer_full_screen);
+	forge::forge_shader_destroy(forge, shader_compose);
 	forge::forge_buffer_destroy(forge, vertex_buffer);
 	forge::forge_shader_destroy(forge, shader);
+	forge::forge_frame_destroy(forge, offscreen_frame);
 	forge::forge_frame_destroy(forge, swapchain_frame);
 	forge::forge_destroy(forge);
 

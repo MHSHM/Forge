@@ -85,13 +85,9 @@ namespace forge
 	static void
 	_forge_frame_free(Forge* forge, ForgeFrame* frame)
 	{
-		if (frame->swapchain)
-		{
-			forge_image_destroy(forge, frame->pass->description.colors[0].image);
-			forge_image_destroy(forge, frame->pass->description.depth.image);
-			forge_swapchain_destroy(forge, frame->swapchain);
-		}
-
+		forge_image_destroy(forge, frame->pass->description.colors[0].image);
+		forge_image_destroy(forge, frame->pass->description.depth.image);
+		forge_swapchain_destroy(forge, frame->swapchain);
 		forge_render_pass_destroy(forge, frame->pass);
 	}
 

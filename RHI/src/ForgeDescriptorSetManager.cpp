@@ -163,8 +163,6 @@ namespace forge
 			{
 				set = allocator->available.back();
 				allocator->available.pop_back();
-
-				return set;
 			}
 			else
 			{
