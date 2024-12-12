@@ -15,53 +15,19 @@
 
 namespace forge
 {
-	static bool
-	_forge_frame_pass_init(Forge* forge, ForgeFrame* frame, ForgeImage* color, ForgeImage* depth)
-	{
-		ForgeAttachmentDescription color_attachment_desc {};
-		color_attachment_desc.image = color;
-		color_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR; // TODO: This should be provided by the user
-		color_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment_desc.clear_action.color[0] = 1.0f;
-		color_attachment_desc.clear_action.color[1] = 0.0f;
-		color_attachment_desc.clear_action.color[2] = 1.0f;
-		color_attachment_desc.clear_action.color[3] = 1.0f;
-
-		ForgeAttachmentDescription depth_attachment_desc {};
-		depth_attachment_desc.image = depth;
-		depth_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depth_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
-		depth_attachment_desc.clear_action.depth = 1.0f;
-
-		ForgeRenderPassDescription pass_desc {};
-		pass_desc.colors[0] = color_attachment_desc;
-		pass_desc.depth = depth_attachment_desc;
-		frame->pass = forge_render_pass_new(forge, pass_desc);
-
-		if (frame->pass == nullptr)
-		{
-			log_error("Failed to initialize frame's pass");
-			return false;
-		}
-
-		return true;
-	}
-
 	static void
-	_forge_swapchain_frame_pass_update(Forge* forge, ForgeFrame* frame)
+	_forge_frame_pass_update(Forge* forge, ForgeFrame* frame, uint32_t width, uint32_t height)
 	{
-		auto swapchain = frame->swapchain;
-		auto swapchain_desc = frame->swapchain->description;
 		auto pass = frame->pass;
 
-		if (pass && pass->width == swapchain->description.extent.width && pass->height == swapchain->description.extent.height)
+		if (pass && pass->width == width && pass->height == height)
 		{
 			return;
 		}
 
 		ForgeImageDescription color_desc{};
 		color_desc.name = "Frame Color";
-		color_desc.extent = {swapchain_desc.extent.width, swapchain_desc.extent.height, 1};
+		color_desc.extent = {width, height, 1};
 		color_desc.type = VK_IMAGE_TYPE_2D;
 		color_desc.format = VK_FORMAT_R8G8B8A8_UNORM;
 		color_desc.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -71,7 +37,7 @@ namespace forge
 
 		ForgeImageDescription depth_desc{};
 		depth_desc.name = "Frame Depth";
-		depth_desc.extent = {swapchain_desc.extent.width, swapchain_desc.extent.height, 1};
+		depth_desc.extent = {width, height, 1};
 		depth_desc.type = VK_IMAGE_TYPE_2D;
 		depth_desc.format = VK_FORMAT_D32_SFLOAT;
 		depth_desc.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -94,33 +60,26 @@ namespace forge
 		}
 		else
 		{
-			_forge_frame_pass_init(forge, frame, color, depth);
+			ForgeAttachmentDescription color_attachment_desc{};
+			color_attachment_desc.image = color;
+			color_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR; // TODO: This should be provided by the user
+			color_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
+			color_attachment_desc.clear_action.color[0] = 1.0f;
+			color_attachment_desc.clear_action.color[1] = 0.0f;
+			color_attachment_desc.clear_action.color[2] = 1.0f;
+			color_attachment_desc.clear_action.color[3] = 1.0f;
+
+			ForgeAttachmentDescription depth_attachment_desc{};
+			depth_attachment_desc.image = depth;
+			depth_attachment_desc.load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depth_attachment_desc.store_op = VK_ATTACHMENT_STORE_OP_STORE;
+			depth_attachment_desc.clear_action.depth = 1.0f;
+
+			ForgeRenderPassDescription pass_desc{};
+			pass_desc.colors[0] = color_attachment_desc;
+			pass_desc.depth = depth_attachment_desc;
+			frame->pass = forge_render_pass_new(forge, pass_desc);
 		}
-	}
-
-	static bool
-	_forge_swapchain_frame_init(Forge* forge, ForgeSwapchainDescription swapchain_desc, ForgeFrame* frame)
-	{
-		frame->swapchain = forge_swapchain_new(forge, swapchain_desc);
-
-		if (frame->swapchain == nullptr)
-		{
-			log_error("Failed to initialize frame's swapchain");
-			return false;
-		}
-
-		return true;
-	}
-
-	static bool
-	_forge_offscreen_frame_init(Forge* forge, ForgeImage* color, ForgeImage* depth, ForgeFrame* frame)
-	{
-		if (_forge_frame_pass_init(forge, frame, color, depth) == false)
-		{
-			return false;
-		}
-
-		return true;
 	}
 
 	static void
@@ -182,16 +141,10 @@ namespace forge
 	}
 
 	ForgeFrame*
-	forge_frame_new(Forge* forge, ForgeImage* color, ForgeImage* depth)
+	forge_frame_new(Forge* forge)
 	{
 		auto frame = new ForgeFrame();
 		forge->offscreen_frames[forge->offscreen_frames_count++] = frame;
-
-		if (_forge_offscreen_frame_init(forge, color, depth, frame) == false)
-		{
-			forge_frame_destroy(forge, frame);
-			return nullptr;
-		}
 
 		return frame;
 	}
@@ -202,7 +155,8 @@ namespace forge
 		auto frame = new ForgeFrame();
 		forge->swapchain_frame = frame;
 
-		if (_forge_swapchain_frame_init(forge, swapchain_desc, frame) == false)
+		frame->swapchain = forge_swapchain_new(forge, swapchain_desc);
+		if (frame->swapchain == nullptr)
 		{
 			forge_frame_destroy(forge, frame);
 			return nullptr;
@@ -212,7 +166,7 @@ namespace forge
 	}
 
 	void
-	forge_frame_prepare(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list)
+	forge_frame_prepare(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list, uint32_t width, uint32_t height)
 	{
 		frame->command_buffer = forge_command_buffer_acquire(forge, forge->command_buffer_manager);
 		frame->set = forge_descriptor_set_acquire(forge, forge->descriptor_set_manager, shader, binding_list);
@@ -229,8 +183,9 @@ namespace forge
 		if (frame->swapchain)
 		{
 			forge_swapchain_update(forge, frame->swapchain);
-			_forge_swapchain_frame_pass_update(forge, frame);
 		}
+
+		_forge_frame_pass_update(forge, frame, width, height);
 
 		if (frame->pass->handle != shader->active_pass)
 		{

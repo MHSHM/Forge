@@ -20,10 +20,20 @@
 #include <sstream>
 #include <fstream>
 
+static uint32_t width = 800;
+static uint32_t height = 600;
+
 inline static void
 _glfw_error_callback(int error, const char* description)
 {
 	forge::log_error("GLFW is reporting an error with code '{}' and message '{}'");
+}
+
+inline static void
+_glfw_window_size_callback(GLFWwindow* window, int _width, int _height)
+{
+	width = _width;
+	height = _height;
 }
 
 inline static std::string
@@ -56,12 +66,13 @@ int main()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	GLFWwindow* window = glfwCreateWindow(800, 600, "Window Title", NULL, NULL);
 	glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_TRUE);
+	glfwSetWindowSizeCallback(window, _glfw_window_size_callback);
 	auto hwnd = glfwGetWin32Window(window);
 
 	auto forge = forge::forge_new();
 
 	forge::ForgeSwapchainDescription desc {};
-	desc.extent = {800, 600};
+	desc.extent = {width, height};
 	desc.format = VK_FORMAT_R8G8B8A8_UNORM;
 	desc.images_count = 2u;
 	desc.present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
@@ -117,7 +128,7 @@ int main()
 		forge::forge_binding_list_vertex_buffer_bind(forge, &binding_list, shader, 0u, vertex_buffer);
 		forge::forge_binding_list_uniform_write(forge, &binding_list, shader, 0u, {sizeof(model_mat), model_mat});
 
-		forge::forge_frame_prepare(forge, swapchain_frame, shader, &binding_list);
+		forge::forge_frame_prepare(forge, swapchain_frame, shader, &binding_list, width, height);
 		forge::forge_frame_begin(forge, swapchain_frame);
 		forge::forge_frame_bind_resources(forge, swapchain_frame, shader, &binding_list);
 		forge::forge_frame_draw(forge, swapchain_frame, 6u);

@@ -2,6 +2,7 @@
 
 #include "ForgeSwapchain.h"
 #include "ForgeShader.h"
+#include "ForgeImage.h"
 
 #include <vulkan/vulkan.h>
 
@@ -10,11 +11,9 @@
 namespace forge
 {
 	struct Forge;
-	struct ForgeImage;
 	struct ForgeRenderPass;
 	struct ForgeSwapchain;
 	struct ForgeBindingList;
-	struct ForgeShader;
 
 	static constexpr uint32_t FORGE_FRAME_MAX_UNIFORM_MEMORY = 16 << 20;
 	static constexpr uint32_t FORGE_FRAME_MAX_VERTEX_BUFFERS = 16u;
@@ -39,13 +38,13 @@ namespace forge
 	};
 
 	ForgeFrame*
-	forge_frame_new(Forge* forge, ForgeImage* color, ForgeImage* depth);
+	forge_frame_new(Forge* forge, ForgeImageDescription color, ForgeImageDescription depth);
 
 	ForgeFrame*
 	forge_frame_new(Forge* forge, ForgeSwapchainDescription swapchain_desc);
 
 	void
-	forge_frame_prepare(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list);
+	forge_frame_prepare(Forge* forge, ForgeFrame* frame, ForgeShader* shader, ForgeBindingList* binding_list, uint32_t width, uint32_t height);
 
 	bool
 	forge_frame_begin(Forge* forge, ForgeFrame* frame);
