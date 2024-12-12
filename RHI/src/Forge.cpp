@@ -533,7 +533,46 @@ namespace forge
 	static void
 	_forge_offscreen_frames_process(Forge* forge)
 	{
-		// TODO:
+		VkResult res;
+
+		VkCommandBuffer command_buffers[FORGE_MAX_OFF_SCREEN_FRAMES];
+		uint32_t command_buffers_count = 0u;
+
+		for (uint32_t i = 0; i < FORGE_MAX_OFF_SCREEN_FRAMES; ++i)
+		{
+			auto frame = forge->offscreen_frames[i];
+			if (frame == nullptr)
+				continue;
+
+			command_buffers[command_buffers_count] = frame->command_buffer;
+
+			++command_buffers_count;
+		}
+
+		constexpr uint32_t MAX_SIGNAL_SEMAPHORES = 4u;
+		VkSemaphore signal_semaphores[MAX_SIGNAL_SEMAPHORES]{};
+		uint64_t signal_values[MAX_SIGNAL_SEMAPHORES]{};
+		uint32_t signal_semaphores_count = 0u;
+
+		signal_semaphores[signal_semaphores_count] = forge->offscreen_rendering_done;
+		signal_values[signal_semaphores_count++] = forge->offscreen_next_signal;
+
+		VkTimelineSemaphoreSubmitInfo timeline_info{};
+		timeline_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+		timeline_info.signalSemaphoreValueCount = signal_semaphores_count;
+		timeline_info.pSignalSemaphoreValues = signal_values;
+
+		VkSubmitInfo submit_info{};
+		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit_info.pNext = &timeline_info;
+		submit_info.commandBufferCount = command_buffers_count;
+		submit_info.pCommandBuffers = command_buffers;
+		submit_info.signalSemaphoreCount = signal_semaphores_count;
+		submit_info.pSignalSemaphores = signal_semaphores;
+		res = vkQueueSubmit(forge->queue, 1u, &submit_info, VK_NULL_HANDLE);
+		VK_RES_CHECK(res);
+
+		forge->offscreen_next_signal++;
 	}
 
 	static void
@@ -579,7 +618,7 @@ namespace forge
 		if (forge->offscreen_frames_count > 0)
 		{
 			wait_semaphores[wait_semaphores_count] = forge->offscreen_rendering_done;
-			wait_values[wait_semaphores_count] = forge->offscreen_next_signal;
+			wait_values[wait_semaphores_count] = forge->offscreen_next_signal - 1;
 			wait_stages[wait_semaphores_count++] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
 		}
 
