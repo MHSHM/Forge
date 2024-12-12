@@ -71,6 +71,8 @@ int main()
 	float vertices[] = {
 		-0.5f, -0.5f, 0.0f,
 		-0.5f,  0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		-0.5f,  0.5f, 0.0f,
 		 0.5f,  0.5f, 0.0f,
 		 0.5f, -0.5f, 0.0f
 	};
@@ -120,6 +122,7 @@ int main()
 		forge::forge_frame_bind_resources(forge, swapchain_frame, shader, &binding_list);
 		forge::forge_frame_draw(forge, swapchain_frame, 6u);
 		forge::forge_frame_end(forge, swapchain_frame);
+
 		forge::forge_flush(forge);
 
 		glfwPollEvents();

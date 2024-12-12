@@ -80,7 +80,7 @@ namespace forge
 				range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 				range.memory = buffer->memory;
 				range.offset = 0u;
-				range.size = size;
+				range.size = std::min(_forge_align_up(size, forge->physical_device_limits.nonCoherentAtomSize), (uint64_t)buffer->description.size);
 				auto res = vkFlushMappedMemoryRanges(forge->device, 1u, &range);
 				VK_RES_CHECK(res);
 			}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeSwapchain.h"
+#include "ForgeShader.h"
 
 #include <vulkan/vulkan.h>
 
@@ -16,15 +17,25 @@ namespace forge
 	struct ForgeShader;
 
 	static constexpr uint32_t FORGE_FRAME_MAX_UNIFORM_MEMORY = 16 << 20;
+	static constexpr uint32_t FORGE_FRAME_MAX_VERTEX_BUFFERS = 16u;
+	static constexpr uint32_t FORGE_FRAME_MAX_IMAGES = 16u;
+
+	struct ForgeFrameResourcesList
+	{
+		std::pair<uint32_t, void*> uniforms[FORGE_SHADER_MAX_DYNAMIC_UNIFORM_BUFFERS];
+		ForgeBuffer* vertex_buffers[FORGE_FRAME_MAX_VERTEX_BUFFERS];
+		ForgeBuffer* index_buffer;
+		ForgeImage* images[FORGE_FRAME_MAX_IMAGES];
+		ForgeShader* shader;
+	};
 
 	struct ForgeFrame
 	{
 		ForgeSwapchain* swapchain;
 		ForgeRenderPass* pass;
+		ForgeFrameResourcesList resources_list;
 		VkCommandBuffer command_buffer;
 		VkDescriptorSet set;
-		uint32_t current_frame;
-		bool pass_updated;
 	};
 
 	ForgeFrame*
