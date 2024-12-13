@@ -9,38 +9,18 @@ namespace forge
 	static bool
 	_forge_deletion_queue_init(Forge* forge, ForgeDeletionQueue* queue)
 	{
-		VkSemaphoreTypeCreateInfo timeline_info{};
-		timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-		timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-		timeline_info.initialValue = 0;
-
-		VkSemaphoreCreateInfo rendering_done_info{};
-		rendering_done_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		rendering_done_info.pNext = &timeline_info;
-		rendering_done_info.flags = 0;
-		auto res = vkCreateSemaphore(forge->device, &rendering_done_info, NULL, &queue->semaphore);
-		VK_RES_CHECK(res);
-
-		if (res != VK_SUCCESS)
-		{
-			log_error("Failed to initialize deletion queue semaphore");
-			return false;
-		}
-
 		return true;
 	}
 
 	static void
 	_forge_deletion_queue_free(Forge* forge, ForgeDeletionQueue* queue)
 	{
-		vkDestroySemaphore(forge->device, queue->semaphore, nullptr);
 	}
 
 	ForgeDeletionQueue*
 	forge_deletion_queue_new(Forge* forge)
 	{
 		auto queue = new ForgeDeletionQueue();
-		queue->next_signal = 1u;
 
 		if (_forge_deletion_queue_init(forge, queue) == false)
 		{
@@ -55,7 +35,7 @@ namespace forge
 	forge_deletion_queue_flush(Forge* forge, ForgeDeletionQueue* queue, bool immediate)
 	{
 		uint64_t value;
-		auto res = vkGetSemaphoreCounterValue(forge->device, queue->semaphore, &value);
+		auto res = vkGetSemaphoreCounterValue(forge->device, forge->timeline, &value);
 		VK_RES_CHECK(res);
 
 		auto iter = std::remove_if(queue->entries.begin(), queue->entries.end(), [forge, immediate, queue, value](const ForgeDeletionQueue::Entry& entry) {
@@ -93,7 +73,6 @@ namespace forge
 		});
 
 		queue->entries.erase(iter, queue->entries.end());
-		queue->next_signal++;
 	}
 
 	void

@@ -55,13 +55,11 @@ namespace forge
 		PFN_vkCmdEndDebugUtilsLabelEXT pfn_vkCmdEndDebugUtilsLabelEXT;
 
 		ForgeFrame* swapchain_frame;
-		VkSemaphore swapchain_blitting_done;
-		uint64_t swapchain_next_signal;
-
 		ForgeFrame* offscreen_frames[FORGE_MAX_OFF_SCREEN_FRAMES];
-		VkSemaphore offscreen_rendering_done;
 		uint32_t offscreen_frames_count;
-		uint64_t offscreen_next_signal;
+
+		VkSemaphore timeline;
+		uint64_t timeline_next_check_point;
 	};
 
 	Forge*

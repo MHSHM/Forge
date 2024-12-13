@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Forge.h"
 #include "ForgeUtils.h"
 
 #include <vulkan/vulkan.h>
@@ -8,8 +9,6 @@
 
 namespace forge
 {
-	struct Forge;
-
 	struct ForgeDeletionQueue
 	{
 		struct Entry
@@ -19,9 +18,7 @@ namespace forge
 			void* handle;
 		};
 
-		VkSemaphore semaphore;
 		std::vector<Entry> entries;
-		uint64_t next_signal;
 	};
 
 	ForgeDeletionQueue*
@@ -31,7 +28,7 @@ namespace forge
 	forge_deletion_queue_push(Forge* forge, ForgeDeletionQueue* queue, T handle)
 	{
 		ForgeDeletionQueue::Entry entry{};
-		entry.signal = queue->next_signal;
+		entry.signal = forge->timeline_next_check_point;
 		entry.handle = handle;
 		entry.type = _vk_object_type<T>();
 		queue->entries.push_back(std::move(entry));

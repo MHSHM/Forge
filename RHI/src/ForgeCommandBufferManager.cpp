@@ -73,7 +73,7 @@ namespace forge
 	{
 		ForgeCommandBufferManager::ForgeCommandBuffer _command_buffer {};
 		_command_buffer.handle = command_buffer;
-		_command_buffer.release_signal = forge->swapchain_next_signal;
+		_command_buffer.release_signal = forge->timeline_next_check_point;
 
 		manager->to_be_released.push_back(std::move(_command_buffer));
 	}
@@ -82,7 +82,7 @@ namespace forge
 	forge_command_buffer_manager_flush(Forge* forge, ForgeCommandBufferManager* manager)
 	{
 		uint64_t value;
-		auto res = vkGetSemaphoreCounterValue(forge->device, forge->swapchain_blitting_done, &value);
+		auto res = vkGetSemaphoreCounterValue(forge->device, forge->timeline, &value);
 		VK_RES_CHECK(res);
 
 		auto iter = std::remove_if(manager->to_be_released.begin(), manager->to_be_released.end(), [forge, manager, value](const ForgeCommandBufferManager::ForgeCommandBuffer& command_buffer) {

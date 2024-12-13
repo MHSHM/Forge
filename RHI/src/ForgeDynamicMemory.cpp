@@ -10,10 +10,10 @@ namespace forge
 	_forge_dynamic_memory_acquire_available_segment(Forge* forge, ForgeDynamicMemory* memory)
 	{
 		auto current = memory->current;
-		memory->release_signal[current] = forge->swapchain_next_signal;
+		memory->release_signal[current] = forge->timeline_next_check_point;
 
 		uint64_t value;
-		auto res = vkGetSemaphoreCounterValue(forge->device, forge->swapchain_blitting_done, &value);
+		auto res = vkGetSemaphoreCounterValue(forge->device, forge->timeline, &value);
 		VK_RES_CHECK(res);
 
 		uint32_t segment = UINT32_MAX;
@@ -29,11 +29,13 @@ namespace forge
 
 		if (segment == UINT32_MAX)
 		{
+			uint64_t wait_value = forge->timeline_next_check_point - 1;
+
 			VkSemaphoreWaitInfo wait_info{};
 			wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
 			wait_info.semaphoreCount = 1;
-			wait_info.pSemaphores = &forge->swapchain_blitting_done;
-			wait_info.pValues = &forge->swapchain_next_signal;
+			wait_info.pSemaphores = &forge->timeline;
+			wait_info.pValues = &wait_value;
 			auto res = vkWaitSemaphores(forge->device, &wait_info, UINT64_MAX);
 			VK_RES_CHECK(res);
 
