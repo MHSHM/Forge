@@ -11,34 +11,31 @@ namespace forge
 	struct ForgeBindingList;
 	struct ForgeShader;
 
-	static constexpr uint32_t FORGE_DESCRIPTOR_SET_ALLOCATOR_MAX_SETS = 16u;
-	static constexpr uint32_t FORGE_DESCRIPTOR_SET_ALLOCATOR_SET_MAX_AGE = 10u; // frames
+	static constexpr uint32_t FORGE_DESCRIPTOR_SET_MANAGER_SET_MAX_AGE = 10u; // frames
+	static constexpr uint32_t FORGE_DESCRIPTOR_SET_MANAGER_MAX_DESCRIPTOR_SETS = 256u;
+	static constexpr uint32_t FORGE_DESCRIPTOR_SET_MANAGER_MAX_SAMPLED_IMAGES = FORGE_DESCRIPTOR_SET_MANAGER_MAX_DESCRIPTOR_SETS * 64u;
+	static constexpr uint32_t FORGE_DESCRIPTOR_SET_MANAGER_MAX_STORAGE_IMAGES = FORGE_DESCRIPTOR_SET_MANAGER_MAX_DESCRIPTOR_SETS * 64u;
+	static constexpr uint32_t FORGE_DESCRIPTOR_SET_MANAGER_MAX_DYNAMIC_UNIFORM_BUFFERS = FORGE_DESCRIPTOR_SET_MANAGER_MAX_DESCRIPTOR_SETS * 16u;
 
 	struct ForgeDescriptorSet
 	{
 		VkDescriptorSet handle;
-		uint64_t last_use; // frame index
-	};
-
-	struct ForgeDescriptorSetAllocator
-	{
-		VkDescriptorPool pool;
-		std::unordered_map<uint64_t, ForgeDescriptorSet> recently_used;
-		std::vector<VkDescriptorSet> available;
-		uint32_t allocatoed_sets;
+		VkDescriptorSetLayout layout;
+		uint64_t active_bindings_hash;
+		uint64_t release_signal;
 	};
 
 	struct ForgeDescriptorSetManager
 	{
-		std::unordered_map<VkDescriptorSetLayout, ForgeDescriptorSetAllocator> allocators;
-		uint32_t allocated_descriptor_sets;
+		VkDescriptorPool pool;
+		std::vector<ForgeDescriptorSet> allocated_sets;
 	};
 
 	ForgeDescriptorSetManager*
 	forge_descriptor_set_manager_new(Forge* forge);
 
 	VkDescriptorSet
-	forge_descriptor_set_acquire(Forge* forge, ForgeDescriptorSetManager* manager, ForgeShader* shader, ForgeBindingList* binding_list);
+	forge_descriptor_set_acquire(Forge* forge, ForgeDescriptorSetManager* manager, VkDescriptorSetLayout layout, ForgeBindingList* binding_list);
 
 	void
 	forge_descriptor_set_manager_flush(Forge* forge, ForgeDescriptorSetManager* manager);
