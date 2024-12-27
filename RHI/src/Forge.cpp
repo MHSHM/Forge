@@ -621,6 +621,5 @@ namespace forge
 	{
 		_forge_frames_process(forge);
 		forge_deletion_queue_flush(forge, forge->deletion_queue, false);
-		forge_command_buffer_manager_flush(forge, forge->command_buffer_manager);
 	}
 };

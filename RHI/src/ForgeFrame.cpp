@@ -226,8 +226,6 @@ namespace forge
 		}
 
 		vkEndCommandBuffer(command_buffer);
-
-		forge_command_buffer_release(forge, forge->command_buffer_manager, frame->command_buffer);
 	}
 
 	ForgeImage*

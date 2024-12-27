@@ -8,16 +8,15 @@ namespace forge
 {
 	struct Forge;
 
+	struct ForgeCommandBuffer
+	{
+		VkCommandBuffer handle;
+		uint64_t release_signal;
+	};
+
 	struct ForgeCommandBufferManager
 	{
-		struct ForgeCommandBuffer
-		{
-			VkCommandBuffer handle;
-			uint64_t release_signal;
-		};
-
-		std::vector<VkCommandBuffer> available;
-		std::vector<ForgeCommandBuffer> to_be_released;
+		std::vector<ForgeCommandBuffer> allocated_command_buffers;
 		VkCommandPool pool;
 	};
 
@@ -30,9 +29,4 @@ namespace forge
 	VkCommandBuffer
 	forge_command_buffer_acquire(Forge* forge, ForgeCommandBufferManager* manager, bool begin);
 
-	void
-	forge_command_buffer_release(Forge* forge, ForgeCommandBufferManager* manager, VkCommandBuffer command_buffer);
-
-	void
-	forge_command_buffer_manager_flush(Forge* forge, ForgeCommandBufferManager* manager);
 }

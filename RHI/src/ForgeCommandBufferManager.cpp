@@ -7,6 +7,16 @@
 
 namespace forge
 {
+	static void
+	_forge_command_buffer_begin(ForgeCommandBuffer command_buffer)
+	{
+		VkCommandBufferBeginInfo begin_info {};
+		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		auto res = vkBeginCommandBuffer(command_buffer.handle, &begin_info);
+		VK_RES_CHECK(res);
+	}
+
 	static bool
 	_forge_command_buffer_manager_init(Forge* forge, ForgeCommandBufferManager* manager)
 	{
@@ -38,63 +48,43 @@ namespace forge
 	VkCommandBuffer
 	forge_command_buffer_acquire(Forge* forge, ForgeCommandBufferManager* manager, bool begin)
 	{
-		VkCommandBuffer command_buffer {};
-
-		if (manager->available.size() > 0)
-		{
-			command_buffer = manager->available.back();
-			manager->available.pop_back();
-		}
-		else
-		{
-			VkCommandBufferAllocateInfo alloc_info{};
-			alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			alloc_info.commandBufferCount = 1u;
-			alloc_info.commandPool = manager->pool;
-			alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			auto res = vkAllocateCommandBuffers(forge->device, &alloc_info, &command_buffer);
-			VK_RES_CHECK(res);
-		}
-
-		if (begin)
-		{
-			VkCommandBufferBeginInfo begin_info{};
-			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			auto res = vkBeginCommandBuffer(command_buffer, &begin_info);
-			VK_RES_CHECK(res);
-		}
-
-		return command_buffer;
-	}
-
-	void
-	forge_command_buffer_release(Forge* forge, ForgeCommandBufferManager* manager, VkCommandBuffer command_buffer)
-	{
-		ForgeCommandBufferManager::ForgeCommandBuffer _command_buffer {};
-		_command_buffer.handle = command_buffer;
-		_command_buffer.release_signal = forge->timeline_next_check_point;
-
-		manager->to_be_released.push_back(std::move(_command_buffer));
-	}
-
-	void
-	forge_command_buffer_manager_flush(Forge* forge, ForgeCommandBufferManager* manager)
-	{
 		uint64_t value;
 		auto res = vkGetSemaphoreCounterValue(forge->device, forge->timeline, &value);
 		VK_RES_CHECK(res);
 
-		auto iter = std::remove_if(manager->to_be_released.begin(), manager->to_be_released.end(), [forge, manager, value](const ForgeCommandBufferManager::ForgeCommandBuffer& command_buffer) {
+		for (auto& command_buffer : manager->allocated_command_buffers)
+		{
 			if (value >= command_buffer.release_signal)
 			{
-				manager->available.push_back(command_buffer.handle);
-				return true;
-			}
-			return false;
-		});
+				if (begin)
+				{
+					_forge_command_buffer_begin(command_buffer);
+				}
+				command_buffer.release_signal = forge->timeline_next_check_point;
 
-		manager->to_be_released.erase(iter, manager->to_be_released.end());
+				return command_buffer.handle;
+			}
+		}
+
+		ForgeCommandBuffer command_buffer {};
+		command_buffer.release_signal = forge->timeline_next_check_point;
+
+		VkCommandBufferAllocateInfo alloc_info{};
+		alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		alloc_info.commandBufferCount = 1u;
+		alloc_info.commandPool = manager->pool;
+		alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		res = vkAllocateCommandBuffers(forge->device, &alloc_info, &command_buffer.handle);
+		VK_RES_CHECK(res);
+
+		if (begin)
+		{
+			_forge_command_buffer_begin(command_buffer);
+		}
+
+		manager->allocated_command_buffers.push_back(command_buffer);
+
+		return command_buffer.handle;
 	}
 
 	ForgeCommandBufferManager*
