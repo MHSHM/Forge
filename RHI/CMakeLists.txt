@@ -32,13 +32,13 @@ set(RHI_SOURCES
     src/ForgeBuffer.cpp
     src/ForgeImage.cpp
     src/ForgeRenderPass.cpp
-    src/ForgeDeletionQueue.cpp
     src/ForgeShader.cpp
     src/ForgeBindingList.cpp
     src/ForgeDescriptorSetManager.cpp
     src/ForgeDynamicMemory.cpp
     src/ForgeFrame.cpp
     src/ForgeCommandBufferManager.cpp
+    src/ForgeDeferredQueue.cpp
     # Add other RHI source files here
 )
 
@@ -51,13 +51,13 @@ set(RHI_HEADERS
     include/ForgeBuffer.h
     include/ForgeImage.h
     include/ForgeRenderPass.h
-    include/ForgeDeletionQueue.h
     include/ForgeShader.h
     include/ForgeBindingList.h
     include/ForgeDescriptorSetManager.h
     include/ForgeDynamicMemory.h
     include/ForgeFrame.h
     include/ForgeCommandBufferManager.h
+    include/ForgeDeferredQueue.h
     # Add other public headers here
 )
 

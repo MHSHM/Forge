@@ -11,7 +11,7 @@
 #include "ForgeCommandBufferManager.h"
 #include "ForgeDescriptorSetManager.h"
 #include "ForgeDynamicMemory.h"
-#include "ForgeDeletionQueue.h"
+#include "ForgeDeferredQueue.h"
 
 namespace forge
 {
@@ -187,7 +187,7 @@ namespace forge
 		{
 			if (shader->pipeline != VK_NULL_HANDLE)
 			{
-				forge_deletion_queue_push(forge, forge->deletion_queue, shader->pipeline);
+				forge_deferred_object_destroy(forge, forge->deferred_queue, shader->pipeline);
 			}
 
 			_forge_shader_pipeline_init(forge, shader, frame->pass->handle);

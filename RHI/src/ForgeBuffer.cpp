@@ -1,7 +1,7 @@
 #include "Forge.h"
 #include "ForgeBuffer.h"
 #include "ForgeUtils.h"
-#include "ForgeDeletionQueue.h"
+#include "ForgeDeferredQueue.h"
 
 namespace forge
 {
@@ -151,12 +151,12 @@ namespace forge
 	{
 		if (buffer->handle)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, buffer->handle);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, buffer->handle);
 		}
 
 		if (buffer->memory)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, buffer->memory);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, buffer->memory);
 		}
 	}
 

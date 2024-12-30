@@ -9,9 +9,10 @@
 #include "ForgeBuffer.h"
 #include "ForgeDynamicMemory.h"
 #include "ForgeFrame.h"
-#include "ForgeDeletionQueue.h"
+#include "ForgeDeferredQueue.h"
 #include "ForgeDescriptorSetManager.h"
 #include "ForgeCommandBufferManager.h"
+#include "ForgeDeferredQueue.h"
 
 #include <vulkan/vulkan_win32.h>
 
@@ -422,10 +423,10 @@ namespace forge
 			return false;
 		}
 
-		forge->deletion_queue = forge_deletion_queue_new(forge);
-		if (forge->deletion_queue == nullptr)
+		forge->deferred_queue = forge_deferred_queue_new(forge);
+		if (forge->deferred_queue == nullptr)
 		{
-			log_error("Failed to initialize the deletion queue");
+			log_error("Failed to initialize the deferred queue");
 			forge_destroy(forge);
 			return false;
 		}
@@ -472,7 +473,7 @@ namespace forge
 
 		if (forge->timeline)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, forge->timeline);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, forge->timeline);
 		}
 
 		if (forge->debug_messenger)
@@ -500,8 +501,8 @@ namespace forge
 			forge_dynamic_memory_destroy(forge, forge->uniform_memory);
 		}
 
-		forge_deletion_queue_flush(forge, forge->deletion_queue, true);
-		forge_deletion_queue_destroy(forge, forge->deletion_queue);
+		forge_deferred_queue_flush(forge, forge->deferred_queue, true);
+		forge_deferred_queue_destroy(forge, forge->deferred_queue);
 
 		if (forge->device)
 		{
@@ -620,6 +621,6 @@ namespace forge
 	forge_flush(Forge* forge)
 	{
 		_forge_frames_process(forge);
-		forge_deletion_queue_flush(forge, forge->deletion_queue, false);
+		forge_deferred_queue_flush(forge, forge->deferred_queue, false);
 	}
 };

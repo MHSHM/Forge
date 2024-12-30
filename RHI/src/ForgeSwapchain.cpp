@@ -2,7 +2,7 @@
 #include "ForgeSwapchain.h"
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
-#include "ForgeDeletionQueue.h"
+#include "ForgeDeferredQueue.h"
 
 namespace forge
 {
@@ -210,7 +210,7 @@ namespace forge
 			return false;
 		}
 
-		forge_deletion_queue_push(forge, forge->deletion_queue, old_swapchain);
+		forge_deferred_object_destroy(forge, forge->deferred_queue, old_swapchain);
 
 		swapchain->images.clear();
 		swapchain->images.resize(swapchain->description.images_count);
@@ -237,9 +237,9 @@ namespace forge
 	{
 		for (uint32_t i = 0; i < FORGE_SWAPCHIAN_INFLIGH_FRAMES; ++i)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, swapchain->fence[i]);
-			forge_deletion_queue_push(forge, forge->deletion_queue, swapchain->rendering_done[i]);
-			forge_deletion_queue_push(forge, forge->deletion_queue, swapchain->image_available[i]);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, swapchain->fence[i]);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, swapchain->rendering_done[i]);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, swapchain->image_available[i]);
 		}
 
 		// TODO: Since surface and swapchain are paired together and given the current state of the deletion queue

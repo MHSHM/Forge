@@ -3,7 +3,7 @@
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeBuffer.h"
-#include "ForgeDeletionQueue.h"
+#include "ForgeDeferredQueue.h"
 
 namespace forge
 {
@@ -150,27 +150,27 @@ namespace forge
 	{
 		if (image->sampler)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, image->sampler);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, image->sampler);
 		}
 
 		if (image->shader_view)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, image->shader_view);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, image->shader_view);
 		}
 
 		if (image->render_target_view)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, image->render_target_view);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, image->render_target_view);
 		}
 
 		if (image->memory)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, image->memory);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, image->memory);
 		}
 
 		if (image->handle)
 		{
-			forge_deletion_queue_push(forge, forge->deletion_queue, image->handle);
+			forge_deferred_object_destroy(forge, forge->deferred_queue, image->handle);
 		}
 	}
 
