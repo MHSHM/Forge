@@ -11,7 +11,7 @@
 #include <ForgeBuffer.h>
 #include <ForgeImage.h>
 #include <ForgeRenderPass.h>
-#include <ForgeDeferredQueue.h>
+#include <ForgeDeletionQueue.h>
 #include <ForgeShader.h>
 #include <ForgeBindingList.h>
 #include <ForgeDescriptorSetManager.h>

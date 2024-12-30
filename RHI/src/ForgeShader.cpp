@@ -3,7 +3,7 @@
 #include "ForgeLogger.h"
 #include "ForgeUtils.h"
 #include "ForgeBindingList.h"
-#include "ForgeDeferredQueue.h"
+#include "ForgeDeletionQueue.h"
 
 #include <vector>
 #include <assert.h>
@@ -471,27 +471,27 @@ namespace forge
 	{
 		if (shader->modules[FORGE_SHADER_STAGE_FRAGMENT])
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, shader->modules[FORGE_SHADER_STAGE_FRAGMENT]);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->modules[FORGE_SHADER_STAGE_FRAGMENT]);
 		}
 
 		if (shader->modules[FORGE_SHADER_STAGE_VERTEX])
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, shader->modules[FORGE_SHADER_STAGE_VERTEX]);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->modules[FORGE_SHADER_STAGE_VERTEX]);
 		}
 
 		if (shader->descriptor_set_layout)
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, shader->descriptor_set_layout);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->descriptor_set_layout);
 		}
 
 		if (shader->pipeline_layout)
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, shader->pipeline_layout);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->pipeline_layout);
 		}
 
 		if (shader->pipeline)
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, shader->pipeline);
+			forge_deletion_queue_push(forge, forge->deletion_queue, shader->pipeline);
 		}
 	}
 

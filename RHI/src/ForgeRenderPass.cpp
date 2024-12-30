@@ -2,7 +2,7 @@
 #include "ForgeRenderPass.h"
 #include "ForgeImage.h"
 #include "ForgeUtils.h"
-#include "ForgeDeferredQueue.h"
+#include "ForgeDeletionQueue.h"
 
 namespace forge
 {
@@ -155,12 +155,12 @@ namespace forge
 	{
 		if (render_pass->framebuffer)
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, render_pass->framebuffer);
+			forge_deletion_queue_push(forge, forge->deletion_queue, render_pass->framebuffer);
 		}
 
 		if (render_pass->handle)
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, render_pass->handle);
+			forge_deletion_queue_push(forge, forge->deletion_queue, render_pass->handle);
 		}
 	}
 

@@ -1,19 +1,19 @@
 #include "Forge.h"
 #include "ForgeCommandBufferManager.h"
 #include "ForgeLogger.h"
-#include "ForgeDeferredQueue.h"
+#include "ForgeDeletionQueue.h"
 
 #include <algorithm>
 
 namespace forge
 {
 	static void
-	_forge_command_buffer_begin(VkCommandBuffer command_buffer)
+	_forge_command_buffer_begin(ForgeCommandBuffer command_buffer)
 	{
 		VkCommandBufferBeginInfo begin_info {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		auto res = vkBeginCommandBuffer(command_buffer, &begin_info);
+		auto res = vkBeginCommandBuffer(command_buffer.handle, &begin_info);
 		VK_RES_CHECK(res);
 	}
 
@@ -41,40 +41,50 @@ namespace forge
 	{
 		if (manager->pool)
 		{
-			forge_deferred_object_destroy(forge, forge->deferred_queue, manager->pool);
+			forge_deletion_queue_push(forge, forge->deletion_queue, manager->pool);
 		}
 	}
 
 	VkCommandBuffer
 	forge_command_buffer_acquire(Forge* forge, ForgeCommandBufferManager* manager, bool begin)
 	{
-		VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+		uint64_t value;
+		auto res = vkGetSemaphoreCounterValue(forge->device, forge->timeline, &value);
+		VK_RES_CHECK(res);
 
-		if (manager->available_command_buffers.size() > 0)
+		for (auto& command_buffer : manager->allocated_command_buffers)
 		{
-			command_buffer = manager->available_command_buffers.back();
-			manager->available_command_buffers.pop_back();
+			if (value >= command_buffer.release_signal)
+			{
+				if (begin)
+				{
+					_forge_command_buffer_begin(command_buffer);
+				}
+				command_buffer.release_signal = forge->timeline_next_check_point;
+
+				return command_buffer.handle;
+			}
 		}
-		else
-		{
-			VkCommandBufferAllocateInfo alloc_info{};
-			alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			alloc_info.commandBufferCount = 1u;
-			alloc_info.commandPool = manager->pool;
-			alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			auto res = vkAllocateCommandBuffers(forge->device, &alloc_info, &command_buffer);
-			VK_RES_CHECK(res);
-		}
+
+		ForgeCommandBuffer command_buffer {};
+		command_buffer.release_signal = forge->timeline_next_check_point;
+
+		VkCommandBufferAllocateInfo alloc_info{};
+		alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		alloc_info.commandBufferCount = 1u;
+		alloc_info.commandPool = manager->pool;
+		alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		res = vkAllocateCommandBuffers(forge->device, &alloc_info, &command_buffer.handle);
+		VK_RES_CHECK(res);
 
 		if (begin)
 		{
 			_forge_command_buffer_begin(command_buffer);
 		}
 
-		// Schedule a command buffer recycle task
-		forge_deferred_command_buffer_recycle(forge, forge->deferred_queue, command_buffer);
+		manager->allocated_command_buffers.push_back(command_buffer);
 
-		return command_buffer;
+		return command_buffer.handle;
 	}
 
 	ForgeCommandBufferManager*

@@ -22,7 +22,6 @@ namespace forge
 	struct ForgeDeletionQueue;
 	struct ForgeDescriptorSetManager;
 	struct ForgeCommandBufferManager;
-	struct ForgeDeferredQueue;
 
 	static constexpr uint32_t FORGE_MAX_OFF_SCREEN_FRAMES = 16u;
 
@@ -44,9 +43,9 @@ namespace forge
 		VkCommandBuffer staging_command_buffer;
 
 		ForgeDynamicMemory* uniform_memory;
+		ForgeDeletionQueue* deletion_queue;
 		ForgeDescriptorSetManager* descriptor_set_manager;
 		ForgeCommandBufferManager* command_buffer_manager;
-		ForgeDeferredQueue* deferred_queue;
 
 		VkDebugUtilsMessengerEXT debug_messenger;
 		PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT;
