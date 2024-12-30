@@ -457,7 +457,7 @@ namespace forge
 			return false;
 		}
 
-		forge->timeline_next_check_point = 1u;
+		forge->timeline_next_signal = 1u;
 
 		return true;
 	}
@@ -542,7 +542,7 @@ namespace forge
 		uint32_t signal_semaphores_count = 0u;
 
 		signal_semaphores[signal_semaphores_count] = forge->timeline;
-		signal_values[signal_semaphores_count++] = forge->timeline_next_check_point;
+		signal_values[signal_semaphores_count++] = forge->timeline_next_signal;
 
 		signal_semaphores[signal_semaphores_count] = swapchain->rendering_done[index];
 		signal_values[signal_semaphores_count++] = UINT64_MAX;
@@ -589,7 +589,7 @@ namespace forge
 		res = vkQueuePresentKHR(forge->queue, &present_info);
 		VK_RES_CHECK(res);
 
-		++forge->timeline_next_check_point;
+		++forge->timeline_next_signal;
 		++swapchain->frame_index;
 	}
 

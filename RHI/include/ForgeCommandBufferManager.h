@@ -11,13 +11,14 @@ namespace forge
 	struct ForgeCommandBuffer
 	{
 		VkCommandBuffer handle;
+		VkCommandPool pool;
 		uint64_t release_signal;
 	};
 
 	struct ForgeCommandBufferManager
 	{
-		std::vector<ForgeCommandBuffer> allocated_command_buffers;
 		VkCommandPool pool;
+		std::vector<ForgeCommandBuffer> allocated_cb;
 	};
 
 	ForgeCommandBufferManager*

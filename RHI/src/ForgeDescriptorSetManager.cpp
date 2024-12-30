@@ -131,7 +131,7 @@ namespace forge
 		{
 			if (set.layout == layout && set.active_bindings_hash == bindings_hash)
 			{
-				set.release_signal = forge->timeline_next_check_point;
+				set.release_signal = forge->timeline_next_signal;
 
 				return set.handle;
 			}
@@ -144,7 +144,7 @@ namespace forge
 				_forge_descriptor_set_update(forge, set.handle, shader->description, binding_list);
 
 				set.active_bindings_hash = bindings_hash;
-				set.release_signal = forge->timeline_next_check_point;
+				set.release_signal = forge->timeline_next_signal;
 
 				return set.handle;
 			}
@@ -153,7 +153,7 @@ namespace forge
 		ForgeDescriptorSet set {};
 		set.active_bindings_hash = bindings_hash;
 		set.layout = layout;
-		set.release_signal = forge->timeline_next_check_point;
+		set.release_signal = forge->timeline_next_signal;
 
 		VkDescriptorSetAllocateInfo allocate_info {};
 		allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

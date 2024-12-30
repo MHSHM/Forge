@@ -28,7 +28,7 @@ namespace forge
 	forge_deletion_queue_push(Forge* forge, ForgeDeletionQueue* queue, T handle)
 	{
 		ForgeDeletionQueue::Entry entry{};
-		entry.signal = forge->timeline_next_check_point;
+		entry.signal = forge->timeline_next_signal;
 		entry.handle = handle;
 		entry.type = _vk_object_type<T>();
 		queue->entries.push_back(std::move(entry));

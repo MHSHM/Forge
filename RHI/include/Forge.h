@@ -59,7 +59,8 @@ namespace forge
 		uint32_t offscreen_frames_count;
 
 		VkSemaphore timeline;
-		uint64_t timeline_next_check_point;
+		uint64_t timeline_next_signal;
+		uint64_t timeline_current_signal;
 	};
 
 	Forge*

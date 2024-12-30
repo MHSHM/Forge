@@ -52,7 +52,7 @@ namespace forge
 		auto res = vkGetSemaphoreCounterValue(forge->device, forge->timeline, &value);
 		VK_RES_CHECK(res);
 
-		for (auto& command_buffer : manager->allocated_command_buffers)
+		for (auto& command_buffer : manager->allocated_cb)
 		{
 			if (value >= command_buffer.release_signal)
 			{
@@ -60,14 +60,15 @@ namespace forge
 				{
 					_forge_command_buffer_begin(command_buffer);
 				}
-				command_buffer.release_signal = forge->timeline_next_check_point;
+				command_buffer.release_signal = forge->timeline_next_signal;
 
 				return command_buffer.handle;
 			}
 		}
 
 		ForgeCommandBuffer command_buffer {};
-		command_buffer.release_signal = forge->timeline_next_check_point;
+		command_buffer.release_signal = forge->timeline_next_signal;
+		command_buffer.pool = manager->pool;
 
 		VkCommandBufferAllocateInfo alloc_info{};
 		alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -82,7 +83,7 @@ namespace forge
 			_forge_command_buffer_begin(command_buffer);
 		}
 
-		manager->allocated_command_buffers.push_back(command_buffer);
+		manager->allocated_cb.push_back(command_buffer);
 
 		return command_buffer.handle;
 	}
